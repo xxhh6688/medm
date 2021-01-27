@@ -1,0 +1,634 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>管理 论文列表</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <script src="content/js/toastr.js"></script>
+    <script src="content/js/jquery-3.1.1.min.js"></script>
+    <script src="content/js/medm.js?201805042108"></script>
+    <script src="content/js/vue.js"></script>
+    <script src="content/js/spinner.js"></script>
+    <script src="content/js/utility.js?201705231258"></script>
+    <script src="content/js/ckeditor/ckeditor.js"></script>
+    <link rel="stylesheet" type="text/css" href="content/css/medm.css" />
+    <link rel="stylesheet" type="text/css" href="content/css/common.css" />
+    <style>
+        [v-cloak] { display:none; }
+        .page {
+            margin: 0;
+            width: 100%;
+        }
+
+        #filteritems {
+            overflow-y: auto;
+            max-height: 300px;
+        }
+
+        #filter {
+            margin-bottom: 18px;
+        }
+
+        #filteritems input {
+            width: 100%;
+            height: 30px;
+            line-height: 30px;
+            font-size: 18px;
+            box-sizing: border-box;
+            padding-left: 5px;
+        }
+
+        #filteritems select {
+            width: 100%;
+            height: 30px;
+            line-height: 30px;
+            font-size: 18px;
+            box-sizing: border-box;
+            padding-left: 5px;
+        }
+
+        #filteritems .func {
+            cursor: pointer;
+        }
+
+        .filterfunc {
+            margin-left: 5px;
+            cursor: pointer;
+        }
+        .smalldialog{
+            position:absolute;
+            z-index:2001;
+            width:600px;
+            height:400px;
+            border:1px solid #000000;
+            box-shadow:#666666 5px 5px 5px;
+            position:fixed;
+            top:50%;
+            left:50%;
+            margin-left:-300px;
+            margin-top:-200px;
+            background-color:#ffffff;
+            padding:18px;
+            box-sizing:border-box;
+        }
+        tr[name='paperitem']:hover{
+            background-color:#93e0e8;
+        }
+    </style>
+    <script>
+        $(document).ready(function () {
+        });
+        function reg() {
+            $("#checkalldisplayitem").click(function () {
+                if ($(this).prop("checked")) {
+                    $("input[name='papercheck']").prop("checked", false);
+                    $("input[name='papercheck']").each(function (index, value) {
+                        if ($(value).is(':visible')) {
+                            $(value).prop("checked", true);
+                        }
+                    });
+                }
+                else {
+                    $("input[name='papercheck']").prop("checked", false);
+                }
+            });
+            $("#applyfilter").click(function () {
+                applyFilter();
+            });
+            $("#addfilteritem").click(function () {
+                addFilterItem();
+            });
+            $("#clearfilter").click(function () {
+                clearFilter();
+            });
+            $("#orderpaperbyscore1").click(function () {
+                showList.sort(sortNumber1);
+                paperListVM.paperList = showList;
+                Vue.nextTick(function () {
+                    updateIndex();
+                });
+            });
+            $("#orderpaperbyscore2").click(function () {
+                showList.sort(sortNumber2);
+                paperListVM.paperList = showList;
+                Vue.nextTick(function () {
+                    updateIndex();
+                });
+            });
+            $("#orderpaperbyscore3").click(function () {
+                showList.sort(sortNumber3);
+                paperListVM.paperList = showList;
+                Vue.nextTick(function () {
+                    updateIndex();
+                });
+            });
+            $("#updatepaperstatus").change(function () {
+                var optionVal = parseInt($(this).val());
+                if (optionVal != 0) {
+                    if (confirm("确认更新状态为:{0}?".format(translatePaperCurrentStatus(optionVal)))) {
+                        $("input[name='papercheck']:checked").each(function (index, value) {
+                            var paperId = $(value).parents("tr").attr("paperid");
+                            var data = {};
+                            data.CurrentStatus = optionVal;
+                            api.odata.updateOne({
+                                SetName: "paper",
+                                Key: paperId,
+                                Data: data,
+                                Success: function () {
+                                    $.each(showList, function (index, value) {
+                                        if (value.Id == paperId) {
+                                            value.CurrentStatus = paperListVM.translateCode(optionVal);
+                                        }
+                                    });
+                                    paperListVM.paperList = showList;
+                                }
+                            });
+                        });
+                    }
+                    else {
+                        $("#updatepaperstatus").val("0");
+                    }
+                }
+            });
+            $("#autoassignreview").click(function () {
+                if (confirm("确认为所选论文分配审阅人员吗？")) {
+                    var reviewerCount = prompt("请输入每篇论文所分配审阅人数");
+                    if (reviewerCount == null) {
+                        alert("分配任务取消！");
+                        return;
+                    }
+                    var paperIds = "";
+                    $("input[name='papercheck']:checked").each(function (index, value) {
+                        var paperId = $(value).parents("tr").attr("paperid");
+                        if (index == 0) {
+                            paperIds += paperId;
+                        }
+                        else {
+                            paperIds += "," + paperId;
+                        }
+                    });
+                    api.review.autoAsignReviewerByPaper({
+                        paperIds: paperIds,
+                        maxReviewCountEachPaper: reviewerCount,
+                        Success: function () {
+                            alert("分配成功");
+                        }
+                    });
+                }
+            });
+            $("#calc1").click(function () {
+                exportMatchData(null,1);
+            });
+            $("#calc2").click(function () {
+                exportMatchData(null,2);
+            });
+        }
+        function exportMatchData(matchId,type) {
+            if (matchId == null) {
+                $("#choosematchdialog").show();
+                $("#exportmatchtype").val(type);
+                return;
+            }
+            if(matchId == 0){
+                alert("请选择大赛名称");
+                return;
+            }
+            $('.smalldialog').hide();
+            window.open("api/Matches/CreateExpertPaperScoreExcelReport?matchId={0}&type={1}".format(matchId,type));
+        }
+        function addFilterItem() {
+            var html = "<tr name='filterrow'>" +
+                         "<td name='setname'>{0}</td>" +
+                         "<td name='op'></td>" +
+                         "<td name='val'></td>" +
+                         "<td><span class='func' name='add'>增加</span>|<span class='func' name='delete'>删除</span></td>" +
+                       "</tr>";
+            var selectHtml = "<select name='setname'>";
+            $.each(filterItems.Options, function (index, value) {
+                var temp = "<option value=\"{1}\">{0}</option>".format(value.name, index);
+                selectHtml += temp;
+            });
+            selectHtml += "</select>"
+
+            html = html.format(selectHtml);
+            $("#filteritems table").append(html);
+            applySetName($("#filteritems tr:last-child").find("select[name='setname']"));
+            $("#filteritems tr:last-child").find("select[name='setname']").change(function () {
+                applySetName(this);
+            });
+            $("#filteritems tr:last-child").find("span[name='add']").click(function () {
+                addFilterItem();
+            });
+            $("#filteritems tr:last-child").find("span[name='delete']").click(function () {
+                $(this).parents("tr").remove();
+            });
+        }
+        function applySetName(obj) {
+            var filterIndex = $(obj).val();
+            selectOpHtml = "<select name='op'>";
+            $.each(filterItems.Options[filterIndex].op, function (index, value) {
+                var temp = "<option value=\"{0}\">{1}</option>".format(value, translateOpName(value));
+                selectOpHtml += temp;
+            });
+            selectOpHtml += "</select>";
+
+            var valueHtml = "";
+            if (filterItems.Options[filterIndex].values.length > 0) {
+                var selectValueHtml = "<select name='value'>";
+                $.each(filterItems.Options[filterIndex].values, function (index, value) {
+                    var temp = "<option value=\"{0}\">{0}</option>".format(value);
+                    selectValueHtml += temp;
+                });
+                selectValueHtml += "</select>";
+                valueHtml = selectValueHtml;
+            }
+            else {
+                valueHtml = "<input name='value' type='text' value='' />";
+            }
+
+            $(obj).parents("tr").find("td[name='op']").html(selectOpHtml);
+            $(obj).parents("tr").find("td[name='val']").html(valueHtml);
+        }
+        function applyFilter() {
+            showList = [];
+            $(totalList).each(function (pIndex, pValue) {
+                var qualified = true;
+                $("#filteritems tr[name='filterrow']").each(function (index, value) {
+                    var filterItemIndex = $(value).find("select[name='setname']").val();
+                    var paramName = filterItems.Options[filterItemIndex].key;
+                    var op = $(value).find("select[name='op']").val();
+                    var val = $(value).find("*[name='value']").val();
+                    console.log("{0} {1} {2} {3}".format(filterItemIndex, paramName, op, val));
+                    switch (op) {
+                        case "contains":
+                            if (pValue[paramName].indexOf(val) == -1) {
+                                qualified = false;
+                                return false;
+                            }
+                            break;
+                        case "eq":
+                            if (pValue[paramName] + "" != val + "") {
+                                qualified = false;
+                                return false;
+                            }
+                            break;
+                        case "gt":
+                            if (isNaN(parseInt(val))) {
+                                qualified = false;
+                                return false;
+                            }
+                            if (pValue[paramName] <= val) {
+                                qualified = false;
+                                return false;
+                            }
+                            break;
+                        case "lt":
+                            if (isNaN(parseInt(pValue[paramName]))) {
+                                qualified = false;
+                                return false;
+                            }
+                            if (pValue[paramName] >= val) {
+                                qualified = false;
+                                return false;
+                            }
+                            break;
+                    }
+                });
+                if (qualified) {
+                    showList.push(pValue);
+                }
+            });
+            paperListVM.paperList = showList;
+            Vue.nextTick(function () {
+                updateIndex();
+            });
+        }
+        function clearFilter() {
+            $("#filteritems tr[name='filterrow']").remove();
+        }
+        function updateIndex() {
+            var index = 0;
+            $("tr[name='paperitem']").each(function (a, b) {
+                if ($(b).is(':visible')) {
+                    $(b).find("td[class='itemno']").html(++index);
+                }
+            });
+            $("#papernumber").text(index);
+        }
+    </script>
+</head>
+<body>
+    <div id="header">
+        <script>
+            loadPage("header", "header");
+        </script>
+    </div>
+    <div id="body" class="page">
+        <div id="managenav"></div>
+        <script>
+            loadPage("managenav", "managenav", function () {
+                $("#managepaper>ul").toggle();
+            });
+        </script>
+        <div id="managecontent">
+            <div id="pagetitle"><span>首页</span><span>管理</span><span>论文列表</span></div>
+            <div id="managecontentdetail" class="loadpane">
+                <div id="filter" v-if="paperList!=null">
+                    <div><span>过滤器</span><span id="addfilteritem" class="filterfunc">[添加条件]</span><span id="clearfilter" class="filterfunc">[清空条件]</span><span id="applyfilter" class="filterfunc">[应用]</span></div>
+                    <div id="filteritems">
+                        <table class="vtable">
+                            <tr>
+                                <td style="width:200px;">项目</td>
+                                <td style="width:100px;">符号</td>
+                                <td>值</td>
+                                <td style="width:100px;">操作</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                <div id="paperstatus" v-if="paperList!=null">
+                    <div>
+                        <span>共<span id="papernumber">0</span>篇</span>
+                        <select id="updatepaperstatus">
+                            <option value="0">批量修改论文状态</option>
+                            <option value="1">形审阶段</option>
+                            <option value="2">函评阶段</option>
+                            <!--<option value="3">会评阶段</option>-->
+                            <!--<option value="11">最终通过</option>-->
+                            <!--<option value="12">最终不通过</option>-->
+                        </select>
+                        <button id="orderpaperbyscore1"><span>形审分数由高到低排序</span></button>
+                        <button id="orderpaperbyscore2"><span>函评分数由高到低排序</span></button>
+                        <!--<button id="orderpaperbyscore3"><span>会评分数由高到低排序</span></button>-->
+                    </div>
+                    <div>
+                        <button id="autoassignreview"><span>批量自动分配审阅</span></button>
+                        <button id="calc1"><span>批量计算形审分数并导出Excel</span></button>
+                        <button id="calc2"><span>批量计算函评分数并导出Excel</span></button>
+                        <!--<button id="calc3"><span>批量计算会评分数</span></button>-->
+                    </div>
+                </div>
+                <table class="vtable" v-if="paperList!=null" v-cloak style="font-size:0.85rem;">
+                    <tr>
+                        <td style="width:30px;"><input type="checkbox" id="checkalldisplayitem" /></td>
+                        <td style="width:40px;">序号</td>
+                        <td>论文标题</td>
+                        <td style="width:60px;">文件数</td>
+                        <td style="width:60px;">已打分/函评分配人数</td>
+                        <td style="width:140px;">学校</td>
+                        <td style="width:100px;">编号</td>
+                        <td style="width:120px;">状态</td>
+                        <td style="width:80px;">形审综合分</td>
+                        <td style="width:80px;">函评综合分</td>
+                        <td style="width:80px;">会评综合分</td>
+                        <td style="width:120px;">操作</td>
+                    </tr>
+                    <tr name="paperitem" v-for="item in paperList" v-if="paperList!=null" v-bind:paperid="item.Id">
+                        <td><input type="checkbox" name="papercheck" /></td>
+                        <td class="itemno"></td>
+                        <td><a target="_blank" v-bind:href="'manage_paperdetail.html?id='+item.Id">{{item.Title}}</a></td>
+                        <td>{{item.paperCount}}</td>
+                        <td>{{item.review2ScoreCount}}/{{item.review2Count}}</td>
+                        <td>{{item.schoolName}}</td>
+                        <td>{{item.Id}}</td>
+                        <td>{{item.CurrentStatus}}</td>
+                        <td>{{item.Score1}}</td>
+                        <td >{{item.Score2}}</td>
+                        <td>{{item.Score3}}</td>
+                        <td><a target="_blank" v-bind:href="'manage_paperdetail.html?id='+item.Id">查看</a> | <a v-bind:href="'manage_editpaper.html?id='+item.Id">修改</a> | <a href="javascript:void(0)" v-on:click="deletePaper(item.Id)">删除</a></td>
+                    </tr>
+                </table>
+                <div v-if="paperList==null">数据读取中...</div>
+            </div>
+        </div>
+        <div id="choosematchdialog" class="smalldialog hide">
+            <div><span>导出数据时间较长，请耐心等待...</span></div>
+            <select id="choosematch">
+                <option value="0">选择导出数据所属大赛名称</option>
+            </select>
+            <input type="text" id="exportmatchtype" value="0" class="hide" />
+            <div style="position:absolute;bottom:18px;right:18px;text-align:right;"><button id="confirmchoice" onclick="exportMatchData($('#choosematch').val(),$('#exportmatchtype').val());"><span>确定</span></button><button id="cancelchoise" onclick="$('.smalldialog').hide();"><span>取消</span></button></div>
+        </div>
+    </div>
+    <script>
+        var showList = [];
+        var totalList = [];
+        var paperListVM = new Vue({
+            el: "#managecontentdetail",
+            data: {
+                paperList: null,
+                matchList:null,
+            },
+            methods: {
+                get: function () {
+                    var self = this;
+                    api.odata.getList({
+                        SetName: "paper",
+                        Uri: "?$select=Id,Title,CurrentStatus,Score1,Score2,Score3&$expand=question($select=Id,Name),school($select=Name),paper_file_ref($filter=Type eq 1),match($select=Id,Title),paper_review_expert($select=Id,ExpertId,StatusType,Score)&$orderby=Id desc&$filter=CreateTime gt {0}".format(new Date(new Date().getFullYear().toString()).toISOString()),
+                        LoadingId: "managecontentdetail",
+                        Success: function (data) {
+                            self.paperList = data.value;
+                            $.each(self.paperList, function (index, value) {
+                                var review1Count = 0;
+                                var review2Count = 0;
+                                var review2ScoreCount = 0;
+                                var review3Count = 0;
+                                $.each(value.paper_review_expert, function (index2, value2) {
+                                    if (value2.StatusType == 1) {
+                                        review1Count++;
+                                    }
+                                    else if (value2.StatusType == 2) {
+                                        review2Count++;
+                                        if (value2.Score > 0) {
+                                            review2ScoreCount++;
+                                        }
+                                    }
+                                    else if (value2.StatusType == 3) {
+                                        review3Count++;
+                                    }
+                                });
+                                value.QuestionTitle = value.question.Name;
+                                value.MatchTitle = value.match.Title;
+                                value.paperCount = value.paper_file_ref.length;
+                                value.schoolName = value.school.Name;
+                                value.review2Count = review2Count;
+                                value.review2ScoreCount = review2ScoreCount;
+                                if (value.CurrentStatus == 1) {
+                                    if (review1Count > 0) {
+                                        value.CurrentStatus = self.translateCode(value.CurrentStatus);
+                                    }
+                                    else {
+                                        value.CurrentStatus = self.translateCode(value.CurrentStatus) + "待分配";
+                                    }
+                                }
+                                else if (value.CurrentStatus == 2) {
+                                    if (review2Count > 0) {
+                                        value.CurrentStatus = self.translateCode(value.CurrentStatus);
+                                    }
+                                    else {
+                                        value.CurrentStatus = self.translateCode(value.CurrentStatus) + "待分配";
+                                    }
+                                }
+                                else if (value.CurrentStatus == 3) {
+                                    if (review3Count > 0) {
+                                        value.CurrentStatus = self.translateCode(value.CurrentStatus);
+                                    }
+                                    else {
+                                        value.CurrentStatus = self.translateCode(value.CurrentStatus) + "待分配";
+                                    }
+                                }
+                            });
+                            showList = JSON.parse(JSON.stringify(self.paperList));
+                            totalList = JSON.parse(JSON.stringify(self.paperList));
+                            Vue.nextTick(function () {
+                                reg();
+                                updateIndex();
+                                $.each(self.paperList, function (index, value) {
+                                    if ($.inArray(value.MatchTitle, filterItems.Options[0].values) == -1) {
+                                        filterItems.Options[0].values.push(value.MatchTitle);
+                                    }
+                                    if ($.inArray(value.QuestionTitle, filterItems.Options[4].values) == -1) {
+                                        filterItems.Options[4].values.push(value.QuestionTitle);
+                                    }
+                                });
+                                addFilterItem();
+                            });
+                        }
+                    });
+                },
+                getMatchList: function () {
+                    var self = this;
+                    api.odata.getList({
+                        SetName: "match",
+                        Uri: "?$select=Id,Title&$filter=CreateTime gt {0}".format(new Date(new Date().getFullYear().toString()).toISOString()),
+                        Success: function (data) { 
+                            self.matchList = data.value;
+                            $.each(self.matchList, function (x, y) {
+                                var tmp =
+                                    "<option value='{1}'>{0}</option>".format(y.Title, y.Id);
+                                $("#choosematch").append(tmp);
+                            });
+                        },
+                    });
+                },
+                getDateString: function (date) {
+                    return getDateString(date);
+                },
+                translateCode: function (code) {
+                    return translatePaperCurrentStatus(code);
+                },
+                deletePaper: function (id) {
+                    var self = this;
+                    if (confirm("确认删除该论文吗？")) {
+                        api.odata.DeleteOne({
+                            SetName: "paper",
+                            Key: id,
+                            Success: function () {
+                                alert("操作成功！");
+                                $.each(self.paperList, function (a, b) {
+                                    if (b.Id == id) {
+                                        self.paperList.splice(a, 1);
+                                        return false;
+                                    }
+                                });
+                            },
+                            Failed: function (data) {
+                                alert("操作失败！{0}".format(data));
+                            },
+                        });
+                    }
+                },
+            },
+        });
+        paperListVM.get();
+        paperListVM.getMatchList();
+        var filterItems = {};
+        filterItems.Options = [
+            {
+                name: "大赛名称",
+                key: "MatchTitle",
+                op: ["eq"],
+                values: []
+            }, {
+                name: "学校名",
+                key: "schoolName",
+                op: ["contains"],
+                values: []
+            }
+            ,
+            {
+                name: "论文数",
+                key: "paperCount",
+                op: ["gt", "lt", "eq"],
+                values: []
+            }
+            ,    {
+                name: "论文名称",
+                key: "Title",
+                op: ["contains"],
+                values: []
+            }, {
+                name: "论文编号",
+                key: "Id",
+                op: ["gt", "lt", "eq"],
+                values: []
+            }, {
+                name: "论文当前状态",
+                key: "CurrentStatus",
+                op: ["eq"],
+                values: ["形审阶段", "形审阶段待分配", "函评阶段", "函评阶段待分配", "会评阶段", "会评阶段待分配", "最终通过", "最终不通过"]
+            },
+            {
+                name: "论文对应题目",
+                key: "QuestionTitle",
+                op: ["eq"],
+                values: []
+            }, {
+                name: "论文形审分值",
+                key: "Score1",
+                op: ["gt", "lt", "eq"],
+                values: []
+            },
+            {
+                name: "论文函评分值",
+                key: "Score2",
+                op: ["gt", "lt", "eq"],
+                values: []
+            }];
+        function translateOpName(op) {
+            switch (op) {
+                case "eq":
+                    return "等于";
+                    break;
+                case "gt":
+                    return "大于";
+                    break;
+                case "lt":
+                    return "小于";
+                    break;
+                case "contains":
+                    return "包含";
+                    break;
+            }
+        }
+        function sortNumber1(a, b) {
+            if (isNaN(parseFloat(a.Score1))) {
+                return 1;
+            }
+            return parseFloat(b.Score1) - parseFloat(a.Score1);
+        }
+        function sortNumber2(a, b) {
+            if (isNaN(parseFloat(a.Score2))) {
+                return 1;
+            }
+            return parseFloat(b.Score2) - parseFloat(a.Score2);
+        }
+        function sortNumber3(a, b) {
+            if (isNaN(parseFloat(a.Score3))) {
+                return 1;
+            }
+            return parseFloat(b.Score3) - parseFloat(a.Score3);
+        }
+    </script>
+</body>
+</html>

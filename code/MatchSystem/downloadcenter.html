@@ -1,0 +1,78 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>下载中心</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <script src="content/js/toastr.js"></script>
+    <script src="content/js/jquery-3.1.1.min.js"></script>
+    <script src="content/js/medm.js?201805042108"></script>
+    <script src="content/js/spinner.js"></script>
+    <script src="content/js/utility.js?201705231258"></script>
+    <script src="content/js/vue.js"></script>
+    <link rel="stylesheet" type="text/css" href="content/css/medm.css" />
+    <link rel="stylesheet" type="text/css" href="content/css/common.css" />
+    <style>
+        .fileitem:nth-child(odd){
+            background-color:#f4f4f4;
+        }
+        .fileitem{
+            padding:5px;
+        }
+    </style>
+    <script>
+        $(document).ready(function () {
+        });
+    </script>
+</head>
+<body>
+    <div id="header">
+        <script>
+            loadPage("header", "header");
+        </script>
+    </div>
+    <div id="body" class="page">
+        <div id="leftnav">
+            <div id="leftnavinner"></div>
+        </div>
+        <script>
+            loadPage("articlenav", "leftnavinner");
+        </script>
+        <div id="detailcontent">
+            <div id="pagetitle"><span>首页</span><span>下载中心</span></div>
+            <div id="downloadfilelist">
+                <div class="fileitem" style="position:relative;" v-for="item in fileList"><a v-bind:href="'/api/Files/DownloadFile?fileToken='+item.file.Token"><span>{{item.file.Name}}</span><span style="position:absolute;top:4px;right:4px;">{{getDateString(item.file.CreateTime)}}</span></a></div>
+                <div v-if="fileList.length == 0"><span>没有下载文件</span></div>
+            </div>
+        </div>
+    </div>
+    <div id="footer"></div>
+    <script>
+        loadPage("footer", "footer");
+        var downloadFileVM = new Vue({
+            el: "#downloadfilelist",
+            data: {
+                fileList: {}
+            },
+            methods: {
+                get: function () {
+                    var self = this;
+                    api.odata.getList({
+                        LoadingId: "downloadfilelist",
+                        SetName: 'downloadcenter',
+                        Uri: '?$expand=file&$orderby=Id desc',
+                        Success: function (data) {
+                            self.fileList = data.value;
+                        },
+                        Failed: function (data) {
+                            alert("操作失败！{0}".format(data));
+                        },
+                    });
+                },
+                getDateString: getDateString
+            }
+        });
+        downloadFileVM.get();
+    </script>
+</body>
+</html>

@@ -1,0 +1,175 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>修改个人信息</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <script src="content/js/toastr.js"></script>
+    <script src="content/js/jquery-3.1.1.min.js"></script>
+    <script src="content/js/medm.js?201805042108"></script>
+    <script src="content/js/utility.js?201705231258"></script>
+    <script src="content/js/vue.js"></script>
+    <script src="content/js/spinner.js"></script>
+    <link rel="stylesheet" type="text/css" href="content/css/medm.css" />
+    <link rel="stylesheet" type="text/css" href="content/css/common.css" />
+    <style>
+    </style>
+    <script>
+        function updatepassword() {
+            aboutMe.updatePassword();
+        }
+    </script>
+</head>
+<body>
+    <div id="header">
+        <script>
+            loadPage("header", "header");
+        </script>
+    </div>
+    <div id="body" class="page">
+        <div id="pagetitle"><span>首页</span><span>修改个人信息</span></div>
+        <div id="userinfo">
+            <table>
+                <tr>
+                    <td>姓名</td>
+                    <td><input type="text" v-model="userInfo.Name" value="" id="username" /></td>
+                </tr>
+                <tr class="hide">
+                    <td>性别</td>
+                    <td>
+                        <select v-model="userInfo.Gender">
+                            <option value="true">男</option>
+                            <option value="false">女</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td>手机</td>
+                    <td><input type="text" v-model="userInfo.CellPhone" value="" id="cellphone" /></td>
+                </tr>
+                <tr>
+                    <td>邮件</td>
+                    <td><input type="text" v-model="userInfo.Mail" value="" id="mail" /></td>
+                </tr>
+                <tr class="hide">
+                    <td>学校/企业名称</td>
+                    <td><input type="text" v-model="userInfo.Company" value="" id="company" /></td>
+                </tr>
+                <tr class="hide">
+                    <td>研究方向</td>
+                    <td><input type="text" v-model="userInfo.Research" value="" id="research" /></td>
+                </tr>
+                <tr class="hide">
+                    <td>擅长评审领域</td>
+                    <td><input type="text" v-model="userInfo.ReviewArea" value="" id="reviewarea" /></td>
+                </tr>
+                <tr>
+                    <td>修改密码</td>
+                    <td class="changepasswordtd">
+                        <form onsubmit="updatepassword(); return false;">
+                            <div><input v-model="pswInfo.oldPassword" type="password" placeholder="原密码" /></div>
+                            <div><input v-model="pswInfo.newPassword" type="password" placeholder="新密码" /></div>
+                            <div class="changepassword">
+                                <input v-model="pswInfo.repeatPassword" type="password" placeholder="重复密码" />
+                                <button type="submit">更新密码</button>
+                            </div>
+                        </form>
+                    </td>
+                </tr>
+            </table>
+            <div class="savecancel"><button v-on:click="save"><span>保存用户信息</span></button><button v-on:click="cancel"><span>取消</span></button></div>
+        </div>
+    </div>
+    <div id="footer"></div>
+    <script>
+        loadPage("footer", "footer");
+    </script>
+    <script>
+        $(document).ready(function () {
+            aboutMe.init();
+        });
+        var aboutMe = new Vue({
+            el: '#body',
+            data: {
+                userInfo: {
+                    Id: 1,
+                    Name: '',
+                    Gender: '',
+                    CellPhone: '',
+                    Email: '',
+                    Company: '',
+                    Research: '',
+                    ReviewArea: ''
+                },
+                pswInfo: {
+                    newPassword: '',
+                    oldPassword: '',
+                    repeatPassword: ''
+                }
+            },
+            methods: {
+                updatePassword: function () {
+                    var self = this;
+                    if (self.pswInfo.newPassword != self.pswInfo.repeatPassword) {
+                        alert('重复密码与新密码不一致。请重新填写。');
+                        self.pswInfo.newPassword = '';
+                        self.pswInfo.repeatPassword = '';
+                        self.pswInfo.oldPassword = '';
+                        return;
+                    }
+                    api.user.updatePassword({
+                        UserId: self.userInfo.Id,
+                        Data: self.pswInfo,
+                        Success: function () {
+                            alert("修改密码成功！");
+                        },
+                        Failed: function (data) {
+                            alert("修改密码失败！{0}".format(data));
+                        },
+                        Fake: null
+                    });
+                    self.pswInfo.newPassword = '';
+                    self.pswInfo.repeatPassword = '';
+                    self.pswInfo.oldPassword = '';
+                },
+                save: function () {
+                    var self = this;
+                    var updatedUserInfo = {};
+                    updatedUserInfo.CellPhone = self.userInfo.CellPhone;
+                    updatedUserInfo.Mail = self.userInfo.Mail;
+                    updatedUserInfo.Name = self.userInfo.Name;
+                    api.odata.updateOne({
+                        SetName: 'user',
+                        Key: self.userInfo.Id,
+                        Data: updatedUserInfo,
+                        Success: function () {
+                            alert("保存成功！");
+                        },
+                        Failed: function (data) {
+                            alert("保存失败！{0}".format(data));
+                        },
+                        Fake: null
+                    });
+                },
+                cancel: function(){
+                    window.location = '/index.html';
+                },
+                init: function () {
+                    this.delayGetCurrentUserInfo();
+                },
+                delayGetCurrentUserInfo: function () {
+                    var self = this;
+                    if (typeof (currentUserVM) != "undefined" && typeof (currentUserVM.userInfo.Id) != "undefined") {
+                        self.userInfo = currentUserVM.userInfo;
+                        return;
+                    }
+
+                    setTimeout(function () {
+                        self.delayGetCurrentUserInfo();
+                    }, 200);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

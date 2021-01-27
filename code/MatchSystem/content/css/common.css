@@ -1,0 +1,285 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    font-size: 16px;
+    font-family: 'Microsoft Yahei', Verdana, Simsun, 'Segoe UI', 'Segoe WP', Tahoma, Arial, sans-serif;
+}
+* {
+    box-sizing: border-box;
+}
+div {
+    box-sizing: border-box;
+}
+
+/*layout*/
+.COLROW > * {
+}
+
+.COLROW::after {
+    content: "";
+    display: block;
+    clear: both;
+}
+
+@media (max-width: 800px) {
+    .COL1, .COL2, .COL3, .COL4, .COL5, .COL6, .COL7, .COL8, .COL9, .COL10, .COL11, .COL12 {
+        display: block;
+        width: 100%;
+    }
+}
+
+@media (min-width: 800px) {
+    .COL1, .COL2, .COL3, .COL4, .COL5, .COL6, .COL7, .COL8, .COL9, .COL10, .COL11, .COL12 {
+        float: left;
+    }
+
+    .COL1 {
+        width: 8.333%;
+    }
+
+    .COL2 {
+        width: 16.666%;
+    }
+
+    .COL3 {
+        width: 25%;
+    }
+
+    .COL4 {
+        width: 33.333%;
+    }
+
+    .COL5 {
+        width: 41.666%;
+    }
+
+    .COL6 {
+        width: 50%;
+    }
+
+    .COL7 {
+        width: 58.333%;
+    }
+
+    .COL8 {
+        width: 66.666%;
+    }
+
+    .COL9 {
+        width: 75%;
+    }
+
+    .COL10 {
+        width: 83.333%;
+    }
+
+    .COL11 {
+        width: 91.666%;
+    }
+
+    .COL12 {
+        width: 100%;
+    }
+}
+
+/* font */
+@font-face {
+    font-family: ykuiFont;
+    src: url('Ico.ttf'), url('Ico.eot'); /* IE9+ */
+}
+
+.ico {
+    -webkit-font-smoothing: antialiased;
+    display: inline-block;
+    font-family: 'ykuiFont';
+    font-style: normal;
+    font-weight: normal;
+    line-height: 1;
+    speak: none;
+    vertical-align: middle;
+}
+
+/* table */
+.table {
+    overflow-x: auto;
+}
+
+    .table table {
+        width: 100%;
+        border: 1px solid #cccccc;
+        border-spacing: 0;
+        border-collapse: collapse;
+    }
+
+    .table tr:first-child {
+        font-weight: bold;
+    }
+
+    .table td {
+        border: 1px solid #cccccc;
+        box-sizing: border-box;
+        height: 50px;
+    }
+
+@media (max-width: 800px) {
+    .table table {
+        width: auto;
+    }
+}
+
+/*divtable*/
+._table {
+    display: table;
+    width: 100%;
+}
+
+._row {
+    display: table-row;
+}
+
+._cell {
+    display: table-cell;
+    vertical-align: middle;
+}
+
+.dialogbox {
+    border: 0;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+    box-sizing: border-box;
+    background: #ffffff;
+    padding: 30px 20px;
+    z-index: 2001;
+}
+
+.dialogboxcontentcontainer {
+    position: absolute;
+    top: 30px;
+    left: 20px;
+    right: 20px;
+    bottom: 30px;
+    overflow-y: auto;
+}
+
+.dialogbox .closebutton {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-family: ykuiFont;
+    cursor: pointer;
+}
+
+    .dialogbox .closebutton:after {
+        content: 'I';
+        display: block;
+    }
+
+@media (max-width: 800px) {
+    .dialogbox {
+        padding: 20px 5px;
+    }
+}
+
+/* spin */
+.Spinner {
+    position: relative;
+    height: 32px;
+    left: 50%;
+    margin-left: -19px;
+    margin-top: 10px;
+    width: 88px;
+}
+
+.Spinner-circle {
+    position: absolute;
+    border-radius: 999px;
+    background-color: black;
+    opacity: 0;
+}
+
+.loadpane {
+    position: relative;
+    min-height: 150px;
+}
+
+    .loadpane .maskpane {
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, .8);
+        position: absolute;
+        left: 0;
+        top: 0;
+        z-index: 999;
+    }
+
+.spinner {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 36px;
+    height: 36px;
+    margin-top: -18px;
+    margin-left: -18px;
+}
+
+.cb {
+    clear: both;
+}
+
+.ellipsis {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.transparent_2 {
+    opacity: 0.2;
+}
+
+.transparent_4 {
+    opacity: 0.4;
+}
+
+.transparent_6 {
+    opacity: 0.6;
+}
+
+.transparent_8 {
+    opacity: 0.8;
+}
+
+.hide {
+    display: none;
+}
+
+.fix {
+    position: fixed;
+}
+
+a {
+    text-decoration: none;
+    color: #000000;
+}
+
+    a:hover {
+        text-decoration: underline;
+    }
+
+    a:visited {
+        text-decoration: none;
+    }
+
+table {
+    border-spacing: 0;
+    border-collapse: collapse;
+}
+
+.unselectable {
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+}

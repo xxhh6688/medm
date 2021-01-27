@@ -1,0 +1,107 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>题目详情</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <script src="content/js/toastr.js"></script>
+    <script src="content/js/jquery-3.1.1.min.js"></script>
+    <script src="content/js/medm.js?201805042108"></script>
+    <script src="content/js/spinner.js"></script>
+    <script src="content/js/vue.js"></script>
+    <script src="content/js/utility.js?201705231258"></script>
+    <link rel="stylesheet" type="text/css" href="content/css/medm.css" />
+    <link rel="stylesheet" type="text/css" href="content/css/common.css" />
+    <style>
+    </style>
+    <script>
+        $(document).ready(function () {
+        });
+    </script>
+</head>
+<body>
+    <div id="header">
+        <script>
+            loadPage("header", "header");
+        </script>
+    </div>
+    <div id="body" class="page">
+        <div id="pagetitle"><span>首页</span><span>题目清单</span><span>题目详情</span></div>
+        <div id="questioncontent" class="loadpane">
+            <table class="htable" v-if="show">
+                <tr>
+                    <td style="width:120px;">序号</td>
+                    <td>{{question.SerialNumber}}</td>
+                </tr>
+                <tr>
+                    <td style="width:120px;">类型</td>
+                    <td><span v-if="question.Type==1">开放</span><span v-if="question.Type==2">定向</span></td>
+                </tr>
+                <tr>
+                    <td style="width:120px;">题目标题</td>
+                    <td>{{question.Name}}</td>
+                </tr>
+                <tr>
+                    <td>提出学校</td>
+                    <td>{{question.Support}}</td>
+                </tr>
+                <tr>
+                    <td>题目来源企业</td>
+                    <td>{{question.FromCompany}}</td>
+                </tr>
+                <tr>
+                    <td>所属专业</td>
+                    <td>{{question.Industry}}</td>
+                </tr>
+                <tr>
+                    <td>题目简介</td>
+                    <td>{{question.Description}}</td>
+                </tr>
+                <tr>
+                    <td>毕设要求</td>
+                    <td>{{question.DesignRequirement}}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    <div id="footer"></div>
+    <script>
+        loadPage("footer", "footer");
+        var questionVM = new Vue({
+            el: "#questioncontent",
+            data: {
+                question: {},
+                show:false,
+            },
+            methods: {
+                getDetail:function() {
+                    var self = this;
+                    api.odata.getOne({
+                        LoadingId: "questioncontent",
+                        SetName: "question",
+                        Key:getParameterValue2('id'),
+                        Uri: "",
+                        Success: function (data) {
+                            self.question = data;
+                            self.show = true;
+                        },
+                        Failed: function (data) {
+                            alert("操作失败！{0}".format(data));
+                        },
+                        Fake: {
+                            Id: 1,
+                            Name: "题目",
+                            Type: "定向",
+                            FromSchool: "清华大学",
+                            FromCompany: "微软",
+                            Introduction: "简介",
+                            Requirement: "需求",
+                        }
+                    });
+                },
+            }
+        });
+        questionVM.getDetail();
+    </script>
+</body>
+</html>

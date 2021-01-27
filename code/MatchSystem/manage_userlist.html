@@ -1,0 +1,112 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>管理 用户列表</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <script src="content/js/toastr.js"></script>
+    <script src="content/js/jquery-3.1.1.min.js"></script>
+    <script src="content/js/medm.js?201805042108"></script>
+    <script src="content/js/vue.js"></script>
+    <script src="content/js/spinner.js"></script>
+    <script src="content/js/utility.js?201705231258"></script>
+    <script src="content/js/ckeditor/ckeditor.js"></script>
+    <link rel="stylesheet" type="text/css" href="content/css/medm.css" />
+    <link rel="stylesheet" type="text/css" href="content/css/common.css" />
+    <style>
+        .page{
+            margin:0;
+            width:100%;
+        }
+    </style>
+    <script>
+        $(document).ready(function () {
+        });
+    </script>
+</head>
+<body>
+    <div id="header">
+        <script>
+            loadPage("header", "header");
+        </script>
+    </div>
+    <div id="body" class="page">
+        <div id="managenav"></div>
+        <script>
+            loadPage("managenav", "managenav", function () {
+                $("#manageuser>ul").toggle();
+            });
+        </script>
+        <div id="managecontent">
+            <div id="pagetitle"><span>首页</span><span>管理</span><span>用户列表</span></div>
+            <div id="managecontentdetail" class="loadpane">
+                <div id="filterstatus">
+                    <span>共<span id="usercount"></span>个</span>
+                </div>
+                <table class="vtable" id="userlist">
+                    <tr>
+                        <td>用户名(点击编辑)</td>
+                        <td style="width:150px;">邮箱</td>
+                        <td style="width:150px;">手机号码</td>
+                        <td style="width:100px;">编号</td>
+                        <td style="width:150px;">今年参与审阅</td>
+                        <td style="width:100px;">状态</td>
+                    </tr>
+                    <tr v-for="item in userList">
+                        <td><a v-bind:href="'manage_edituser.html?id='+item.Id"><span>{{item.Name}}</span></a></td>
+                        <td>{{item.Mail}}</td>
+                        <td>{{item.CellPhone}}</td>
+                        <td>{{item.Id}}</td>
+                        <td>{{item.paper_review_expert.length}}次</td>
+                        <td>{{item.Disabled}}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script>
+        var userListVM = new Vue({
+            el: "#managecontentdetail",
+            data: {
+                userList:null
+            },
+            methods: {
+                get: function () {
+                    var self = this;
+                    api.odata.getList({
+                        SetName: "user",
+                        LoadingId: "managecontentdetail",
+                        Uri: "?$expand=paper_review_expert($select=Id;$filter=CreateTime gt {0})".format(new Date(new Date().getFullYear().toString()).toISOString()),
+                        Success: function (data) {
+                            self.userList = [];
+                            $.each(data.value, function (index, value) {
+                                var allow = false;
+                                $.each(getParameterValue2("type").split(","), function (index2, value2) {
+                                    if ((value.Type & value2) == value2) {
+                                        allow = true;
+                                    }
+                                });
+                                if (allow) {
+                                    self.userList.push(value);
+                                }
+                            });
+                            $.each(self.userList, function (index, value) {
+                                if (value.Disabled == "Y") {
+                                    value.Disabled = "已禁用";
+                                }
+                                else {
+                                    value.Disabled = "已启用";
+                                }
+                            });
+                            Vue.nextTick(function () {
+                                $("#usercount").text(self.userList.length);
+                            });
+                        }
+                    });
+                }
+            }
+        });
+        userListVM.get();
+    </script>
+</body>
+</html>

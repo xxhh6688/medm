@@ -1,0 +1,179 @@
+﻿<div id="headerbanner1" class="page">
+    <div id="logoimage"><a href="/"><img src="content/image/logo.png" /></a></div>
+    <div id="usericon" class="unselectable">
+        <span class="ico" title="我的账户">"</span>
+    </div>
+    <div id="manageicon" class="hide unselectable">
+        <span class="ico" title="系统管理">8</span>
+    </div>
+    <div id="searchsite">
+        <form onsubmit="goSearch();return false;">
+            <input id="searchstring" type="text" placeholder="搜索" />
+            <button type="submit"><span class="ico" id="searchsitebutton">S</span></button>
+        </form>
+    </div>
+</div>
+<div id="headerbanner2">
+    <div id="mainnav" class="page">
+        <ul id="common_menu">
+            <li><a href="/">首页</a></li>
+            <li>
+                <a href="javascript:void(0)">文章</a>
+                <ul class="submenu">
+                    <li><a href="articlelist.html?t=1"><span>新闻</span></a></li>
+                    <li><a href="articlelist.html?t=2"><span>通知</span></a></li>
+                    <li><a href="articlelist.html?t=3"><span>观点</span></a></li>
+                </ul>
+            </li>
+            <li><a href="matchlist.html">大赛列表</a></li>
+            <li><a href="article.html?id=21">大赛章程</a></li>
+            <li><a href="article.html?id=22">大赛细则</a></li>
+            <li><a href="downloadcenter.html">下载中心</a></li>
+            <li><a href="questionlist.html">题目清单</a></li>
+            <li><a href="article.html?id=24">联系我们</a></li>
+        </ul>
+        <ul id="my_menu" class="hide">
+            <li id="mymatchicon" class="hide"><a href="mymatchlist.html">我的参赛</a></li>
+            <li id="myreviewicon" class="hide"><a href="myreviewlist.html">我的审阅</a></li>
+        </ul>
+        <div class="cb"></div>
+    </div>
+</div>
+<div id="popup_right_pane"></div>
+<div id="popup_dialog_mask"></div>
+<div id="popup_dialog">
+    <span class="closedialogbutton ico">I</span>
+</div>
+<script>
+    var headerView = {
+        showHeaderIcon: function () {
+            if (typeof (currentUserVM.userInfo.Id) != "undefined") {
+                $("#messageicon").removeClass("hide");
+
+                if ((currentUserVM.userInfo.Type & 16) == 16) {
+                    $("#manageicon").removeClass("hide");
+                    $("#my_menu").removeClass("hide");
+                    $("#mymatchicon").removeClass("hide");
+                    $("#myreviewicon").removeClass("hide");
+                }
+
+                $("#myreviewicon").removeClass("hide");
+                $("#mymatchicon").removeClass("hide");
+
+                if ((currentUserVM.userInfo.Type & 1) == 1) {
+                    $("#my_menu").removeClass("hide");
+                    $("#myreviewicon").removeClass("hide");
+                }
+                if ((currentUserVM.userInfo.Type & 2) == 2) {
+                    $("#my_menu").removeClass("hide");
+                    $("#myreviewicon").removeClass("hide");
+                }
+                if ((currentUserVM.userInfo.Type & 32) == 32) {
+                    $("#my_menu").removeClass("hide");
+                    $("#myreviewicon").removeClass("hide");
+                }
+                if ((currentUserVM.userInfo.Type & 8) == 8) {
+                    $("#manageicon").removeClass("hide");
+                    $("#my_menu").removeClass("hide");
+                    $("#myreviewicon").removeClass("hide");
+                }
+            }
+        },
+    };
+    var currentUserVM = new Vue({
+        el: "#headerbanner1",
+        data: {
+            userInfo: {}
+        },
+        methods: {
+            getCurrentUserInfo: function () {
+                var self = this;
+                api.user.getCurrentUserInfo({
+                    LoadingId:"body",
+                    Success: function (data) {
+                        if (data == null) {
+                            if (window.location.pathname.indexOf("my") != -1) {
+                                window.location.href = '/login.html';
+                            }
+                            if (window.location.pathname.indexOf("manage_") != -1) {
+                                window.location.href = '/login.html';
+                            }
+                            if (window.location.pathname.indexOf("submitpaper.html") != -1) {
+                                window.location.href = '/login.html';
+                            }
+                            return;
+                        }
+                        else {
+                            if (((data.Type & 8) != 8 && (data.Type & 16) != 16) && window.location.pathname.indexOf("manage_") != -1) {
+                                window.location.href = '/login.html';
+                            }
+                        }
+                        api.odata.getOne({
+                            SetName: "user",
+                            Key: data.Id,
+                            Uri: "",
+                            Success: function (data) {
+                                self.userInfo = data;
+                                headerView.showHeaderIcon();
+                            }
+                        });
+                    },
+                    Failed: function (data) {
+                        alert("操作失败！{0}".format(data));
+                    }
+                });
+            },
+            logout: function () {
+                api.user.logout({
+                    Success: function () {
+                        window.location.href = "/";
+                    },
+                    Failed: function (data) {
+                        alert("操作失败！{0}".format(data));
+                    },
+                });
+            },
+        }
+    });
+    currentUserVM.getCurrentUserInfo();
+    $("#manageicon").click(function () {
+        window.location.href = "manage_paperlist.html";
+    });
+    $("#messageicon").click(function () {
+        $("#popup_right_pane").empty();
+        $("#popup_right_pane").empty();
+        var html = "<ul id=\"usermessages\">" +
+                   "</ul>";
+        $("#popup_right_pane").html(html);
+        $("#popup_right_pane").toggle("fast");
+    });
+    $("#usericon").click(function () {
+        $("#popup_right_pane").empty();
+        if (typeof (currentUserVM.userInfo.Id) != "undefined") {
+            html = "<ul id=\"usersettings\">" +
+                     "<li>欢迎用户 {0}</li>".format(currentUserVM.userInfo.Name) +
+                     "<li><a href=\"aboutme.html\">修改个人信息</a></li>" +
+                     "<li><a href=\"javascript:currentUserVM.logout();\">退出登录</a></li>" +
+                   "</ul>";
+        }
+        else {
+            html = "<ul id=\"usersettings\">" +
+                     "<a href='login.html'>登陆</a>"+
+                   "</ul>";
+        }
+        $("#popup_right_pane").html(html);
+        $("#popup_right_pane").toggle("slow");
+    });
+    $("#common_menu>li").click(function () {
+        $(this).find("ul").toggle();
+    });
+    function goSearch() {
+        var s = $("#searchstring").val().trim();
+        if (s == "") {
+            return;
+        }
+        else {
+            window.location.href = "search.html?s={0}".format(encodeURI(s));
+        }
+    }
+</script>

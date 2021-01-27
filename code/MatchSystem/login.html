@@ -1,0 +1,123 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>登陆</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <script src="content/js/toastr.js"></script>
+    <script src="content/js/jquery-3.1.1.min.js"></script>
+    <script src="content/js/medm.js?201805042108"></script>
+    <script src="content/js/vue.js"></script>
+    <script src="content/js/spinner.js"></script>
+    <script src="content/js/utility.js?201705231258"></script>
+    <link rel="stylesheet" type="text/css" href="content/css/medm.css" />
+    <link rel="stylesheet" type="text/css" href="content/css/common.css" />
+    <link rel="stylesheet" type="text/css" href="content/css/toastr.css" />
+    <style>
+        #loginform input {
+            height: 30px;
+            line-height: 30px;
+            width: 100%;
+            padding-left: 5px;
+            font-size: 16px;
+        }
+
+        .loginbutton {
+            position: absolute;
+            top: 10px;
+            right: 4px;
+            background:transparent;
+            border: 0;
+        }
+
+        #logincontainer {
+            background: url('/content/image/banner4.jpg');
+            position: relative;
+            background-size:100%;
+            background-position:left top;
+            width:100%;
+            height:350px;
+        }
+
+        #loginformbk {
+            opacity: 0.88;
+            position: absolute;
+            top: 0;
+            right: 30px;
+            width:360px;
+            height:280px;
+            background-color:#ffffff;
+        }
+        #loginform{
+            position:absolute;
+            top:0;
+            right:30px;
+            width:360px;
+            padding:18px;
+        }
+    </style>
+    <script>
+        $(document).ready(function () {
+
+        });
+        function loginSubmit() {
+            var cellphoneOrMail = $("#cellphoneormail").val();
+            var password = $("#password").val();
+            loginUserVM.loginForm.Phone = cellphoneOrMail;
+            loginUserVM.loginForm.Email = cellphoneOrMail;
+            loginUserVM.loginForm.Password = password;
+            loginUserVM.login();
+        }
+    </script>
+</head>
+<body>
+    <div id="header">
+        <script>
+            loadPage("header", "header");
+        </script>
+    </div>
+    <div id="body" class="page">
+        <div id="login">
+            <form onsubmit="loginSubmit(); return false;">
+                <div id="logincontainer" class="loadpane">
+                    <div id="loginformbk"></div>
+                    <div id="loginform">
+                        <div class="form">
+                            <div style="margin-bottom:18px;"><input type="text" id="cellphoneormail" placeholder="手机号或邮箱" /></div>
+                            <div style="position:relative;">
+                                <input type="password" id="password" placeholder="输入密码" />
+                                <button type="submit" class="loginbutton"><span class="ico">&#57354;</span></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="footer"></div>
+    <script>
+        loadPage("footer", "footer");
+        var loginUserVM = new Vue({
+            el: "#loginform",
+            data: {
+                loginForm: {}
+            },
+            methods: {
+                login: function () {
+                    var self = this;
+                    api.user.login({
+                        LoadingId: "logincontainer",
+                        Data: self.loginForm,
+                        Success: function () {
+                            window.location.href = "/";
+                        },
+                        Failed: function (data) {
+                            alert("登陆失败！{0}".format(data));
+                        },
+                    });
+                }
+            }
+        });
+    </script>
+</body>
+</html>

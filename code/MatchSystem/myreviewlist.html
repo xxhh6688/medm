@@ -1,0 +1,194 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>我的评审</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <script src="content/js/toastr.js"></script>
+    <script src="content/js/jquery-3.1.1.min.js"></script>
+    <script src="content/js/medm.js?201805042108"></script>
+    <script src="content/js/spinner.js"></script>
+    <script src="content/js/vue.js"></script>
+    <script src="content/js/utility.js?201705231258"></script>
+    <link rel="stylesheet" type="text/css" href="content/css/medm.css" />
+    <link rel="stylesheet" type="text/css" href="content/css/common.css" />
+    <style>
+        .paperitem{
+            margin-bottom:18px;
+        }
+    </style>
+    <script>
+        $(document).ready(function () {
+            reg();
+            delayGetReviewPaper();
+        });
+        function reg() {
+            $("#filter").click(function () {
+                $("#filterdetail").toggle();
+            });
+        }
+        function delayGetReviewPaper() {
+            if (typeof (currentUserVM) != "undefined" && typeof (currentUserVM.userInfo.Id) != "undefined") {
+                myReviewListVM.getList();
+                return;
+            }
+            setTimeout(function () {
+                delayGetReviewPaper();
+            }, 200);
+        }
+    </script>
+</head>
+<body>
+    <div id="header">
+        <script>
+            loadPage("header", "header");
+        </script>
+    </div>
+    <div id="body" class="page loadpane">
+        <div id="pagetitle"><span>首页</span><span>我的评审列表</span></div>
+        <div id="paperlist" class="loadpane">
+            <div class="paperitem" v-for="paper,i in paperList">
+                <table class="htable">
+                    <tr style="background-color:#5b146c;color:#ffffff">
+                        <td>评审项目</td>
+                        <td>{{++i}}</td>
+                    </tr>
+                    <tr>
+                        <td>编号</td>
+                        <td>{{paper.Id}}</td>
+                    </tr>
+                    <tr>
+                        <td>论文标题</td>
+                        <td>{{paper.Title}}</td>
+                    </tr>
+                    <tr>
+                        <td>选择题目</td>
+                        <td><a v-bind:href="'question.html?id=' + paper.Question.Id" target="_blank"><span>【编号】{{paper.Question.SerialNumber}} {{paper.Question.Name}}</span></a></td>
+                    </tr>
+                    <tr>
+                        <td>当前状态</td>
+                        <td>{{translatePaperCurrentStatus(paper.Status)}}</td>
+                    </tr>
+                    <tr>
+                        <td>大赛名称</td>
+                        <td>{{paper.Match.Title}}</td>
+                    </tr>
+                    <tr>
+                        <td>大赛类型</td>
+                        <td>{{translateMatchType(paper.Match.Type)}}</td>
+                    </tr>
+                    <tr v-if="paper.Status == 1">
+                        <td>形审阶段</td>
+                        <td>{{getDateString(paper.Match.ReviewStartTime)}}至{{getDateString(paper.Match.ReviewEndTime)}}</td>
+                    </tr>
+                    <tr v-if="paper.Status == 2">
+                        <td>函评阶段</td>
+                        <td>{{getDateString(paper.Match.Review1StartTime)}}至{{getDateString(paper.Match.Review1EndTime)}}</td>
+                    </tr>
+                    <tr v-if="paper.Status == 3">
+                        <td>会评阶段</td>
+                        <td>{{getDateString(paper.Match.Review2StartTime)}}至{{getDateString(paper.Match.Review2EndTime)}}</td>
+                    </tr>
+                    <tr>
+                        <td>评分</td>
+                        <td>{{paper.Score}}</td>
+                    </tr>
+                    <tr>
+                        <td>操作</td>
+                        <td><a v-bind:href="'myreviewdetail.html?id='+paper.Id"><span>查看详情</span></a></td>
+                    </tr>
+                </table>
+            </div>
+            <div class="hide" id="noitem">暂时没有条目</div>
+        </div>
+    </div>
+    <div id="footer"></div>
+    <script>
+        loadPage("footer", "footer");
+        var myReviewListVM = new Vue({
+            el: "#paperlist",
+            data: {
+                paperList: [],
+            },
+            methods: {
+                getList:function() {
+                    var self = this;
+                    var now = new Date().toISOString();
+                    api.odata.getList({
+                        Loading: "paperlist",
+                        SetName: "match",
+                        Uri: "?$select=Id&$filter=EndTime%20gt%20{0}&$expand=paper($select=Id)".format(now),
+                        Success: function (data) {
+                            var paperIds = [];
+                            $.each(data.value, function (a, b) {
+                                $.each(b.paper, function (c, d) {
+                                    paperIds.push(d.Id);
+                                });
+                            });
+                            paperIds.sort(function (x, y) {
+                                if (x > y) {
+                                    return 1;
+                                }
+                                else {
+                                    return -1;
+                                }
+                            });
+                            if (paperIds.length > 0) {
+                                var uri = "?$select=Id&$expand=paper_review_expert($select=PaperId,Score;$filter=PaperId ge {0};$expand=paper($select=Id,Title,CurrentStatus;$expand=paper_file_ref($expand=file),question($select=Id,Name,SerialNumber),match($select=Id,Title,Type,ReviewStartTime,Review1StartTime,Review2StartTime,ReviewEndTime,Review1EndTime,Review2EndTime,EndTime)))".format(paperIds[0]);
+                                api.odata.getOne({
+                                    LoadingId: "paperlist",
+                                    SetName: "user",
+                                    Key: currentUserVM.userInfo.Id,
+                                    Uri: uri,
+                                    Success: function (data) {
+                                        $.each(data.paper_review_expert, function (index, value) {
+                                            if (value.paper.match.EndTime < new Date().toISOString()) {
+                                                return true;
+                                            }
+
+                                            var paper = {};
+                                            paper.Id = value.PaperId;
+                                            paper.Title = value.paper.Title;
+                                            paper.Question = value.paper.question;
+                                            paper.Status = value.paper.CurrentStatus;
+                                            paper.Match = value.paper.match;
+                                            paper.ScoreNumber = value.Score;
+                                            if (value.Score == 0) {
+                                                paper.Score = "未打分";
+                                            }
+                                            else {
+                                                paper.Score = "已打分" + value.Score;
+                                            }
+
+                                            if (value.Score == 0) {
+                                                self.paperList.unshift(paper);
+                                            }
+                                            else {
+                                                self.paperList.push(paper);
+                                            }
+                                        });
+                                        Vue.nextTick(function () {
+                                            if (self.paperList == null || self.paperList.length == 0) {
+                                                $("#noitem").show();
+                                            }
+                                        });
+                                    },
+                                    Failed: function (data) {
+                                        alert("操作失败！{0}".format(data));
+                                    },
+                                });
+                            }
+                        }
+                    });
+                    
+                },
+                getDateString: function (date) {
+                    return getDateString(date);
+                },
+                translateMatchType: translateMatchType,
+                translatePaperCurrentStatus: translatePaperCurrentStatus
+            }
+        });
+    </script>
+</body>
+</html>

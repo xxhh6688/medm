@@ -1,0 +1,133 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>大赛详情</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <script src="content/js/toastr.js"></script>
+    <script src="content/js/jquery-3.1.1.min.js"></script>
+    <script src="content/js/medm.js?201805042108"></script>
+    <script src="content/js/utility.js?201705231258"></script>
+    <script src="content/js/vue.js"></script>
+    <script src="content/js/spinner.js"></script>
+    <link rel="stylesheet" type="text/css" href="content/css/medm.css" />
+    <link rel="stylesheet" type="text/css" href="content/css/common.css" />
+    <style>
+        [v-cloak] { display:none; }
+    </style>
+    <script>
+        $(document).ready(function () {
+        });
+    </script>
+</head>
+<body>
+    <div id="header">
+        <script>
+            loadPage("header", "header");
+        </script>
+    </div>
+    <div id="body" class="page">
+        <div id="pagetitle"><span>首页</span><span>大赛列表</span><span>大赛详情</span></div>
+        <div id="matchcontent" class="loadpane">
+            <div v-if="show==false">加载中...</div>
+            <table class="htable" v-if="show" v-cloak>
+                <tr>
+                    <td>大赛标题</td>
+                    <td>{{match.Title}}</td>
+                </tr>
+                <tr>
+                    <td>大赛类型</td>
+                    <td>{{translateMatchType(match.Type)}}</td>
+                </tr>
+                <tr>
+                    <td>大赛时间</td>
+                    <td>{{getDateString(match.StartTime)}}至{{getDateString(match.EndTime)}}</td>
+                </tr>
+                <tr>
+                    <td>提交论文设计</td>
+                    <td>{{getDateString(match.RegisterStartTime)}}至{{getDateString(match.RegisterEndTime)}}</td>
+                </tr>
+                <tr>
+                    <td>形审阶段</td>
+                    <td>{{getDateString(match.ReviewStartTime)}}至{{getDateString(match.ReviewEndTime)}}</td>
+                </tr>
+                <tr>
+                    <td>函评阶段</td>
+                    <td>{{getDateString(match.Review1StartTime)}}至{{getDateString(match.Review1EndTime)}}</td>
+                </tr>
+                <tr>
+                    <td>会评阶段</td>
+                    <td>{{getDateString(match.Review2StartTime)}}至{{getDateString(match.Review2EndTime)}}</td>
+                </tr>
+                <tr>
+                    <td>大赛介绍</td>
+                    <td v-html="match.Description"></td>
+                </tr>
+                <tr>
+                    <td>大赛题目</td>
+                    <td>
+                        <div style="height:300px;overflow:auto;">
+                            <div><span>共{{match.match_question_ref.length}}个</span></div>
+                            <div class="questionitem" v-for="question in match.match_question_ref">
+                                <a v-bind:href="'question.html?id='+question.question.Id">【编号】{{question.question.SerialNumber}}【类型】<span v-if="question.question.Type==2">定向</span><span v-if="question.question.Type==1">开放</span> {{question.question.Name}}</a>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>奖项设置</td>
+                    <td v-html="match.Award"></td>
+                </tr>
+                <tr>
+                    <td>大赛附件</td>
+                    <td>
+                    <div v-for="f in match.match_file_ref">
+                        <a v-bind:href="'/api/Files/DownloadFile?FileToken=' + f.file.Token">{{f.file.Name}}</a>
+                    </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>操作</td>
+                    <td><a v-bind:href="'submitpaper.html?matchid=' + match.Id"><span class="spanbutton">点击参赛/提交论文</span></a></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    <div id="footer"></div>
+    <script>
+        loadPage("footer", "footer");
+    </script>
+    <script>
+        var matchVM = new Vue({
+            el: "#matchcontent",
+            data: {
+                match: {},
+                show: false,
+            },
+            methods: {
+                getDetail:function() {
+                    var self = this;
+                    api.odata.getOne({
+                        LoadingId: "matchcontent",
+                        SetName: "match",
+                        Key: getParameterValue2('id'),
+                        Uri: "?$expand=match_question_ref($expand=question($select=SerialNumber,Id,Name,Type)),match_file_ref($expand=file)",
+                        Success: function (data) {
+                            self.match = data;
+                            self.show = true;
+                        },
+                        Failed: function (data) {
+                            alert("操作失败！{0}".format(data));
+                        },
+                    });
+                },
+                getDateString: function (date) {
+                    return getDateString(date);
+                },
+                translateMatchType: translateMatchType
+            }
+        });
+        matchVM.getDetail();
+    </script>
+</body>
+</html>

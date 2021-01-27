@@ -1,0 +1,495 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>管理 修改论文</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <script src="content/js/toastr.js"></script>
+    <script src="content/js/jquery-3.1.1.min.js"></script>
+    <script src="content/js/medm.js?201805042108"></script>
+    <script src="content/js/spinner.js"></script>
+    <script src="content/js/vue.js"></script>
+    <script src="content/js/utility.js?201705231258"></script>
+    <script src="content/js/uploadfile.js"></script>
+    <script src="content/js/ckeditor/ckeditor.js"></script>
+    <link rel="stylesheet" type="text/css" href="content/css/medm.css" />
+    <link rel="stylesheet" type="text/css" href="content/css/common.css" />
+    <style>
+        #papercontent input {
+            width: 100%;
+            height: 30px;
+            line-height: 30px;
+            padding-left: 5px;
+            border: 0;
+            font-size: 18px;
+            box-sizing: border-box;
+        }
+
+        #papercontent select {
+            width: 100%;
+            height: 30px;
+            line-height: 30px;
+            border: 0;
+            font-size: 18px;
+        }
+
+        .deleteFileIco {
+            cursor: pointer;
+            margin-left: 5px;
+            margin-top: -4px;
+        }
+    </style>
+    <script>
+        var g = {};
+        $(document).ready(function () {
+        });
+        function init() {
+            $("#submitpaper").click(function () {
+                g.fileType = 1;
+                $("#fileToUpload").attr("accept", ".docx,.doc");
+                $("#fileToUpload").trigger("click");
+            });
+            $("#submitattachment").click(function () {
+                g.fileType = 2;
+                $("#fileToUpload").attr("accept", "*.*");
+                $("#fileToUpload").trigger("click");
+            });
+            $("#savepaper").click(function () {
+                var data = {};
+                data.MatchId = parseInt(myPaperVM.paper.match.Id);
+                if (isNaN(data.MatchId)) {
+                    alert("未知的大赛类型，请从大赛入口进入提交参赛作品！");
+                    return;
+                }
+                data.QuestionId = parseInt($("#choosedquestion").attr("questionid"));
+                if (isNaN(data.QuestionId)) {
+                    alert("请选择问题后再提交");
+                    return;
+                }
+                if ($("#papercontent .fileitem").length == 0) {
+                    alert("请上传论文后再提交");
+                    return;
+                }
+                data.StudentName = $("#studentname").val();
+                if (data.StudentName.trim() == "") {
+                    alert("请输入学生姓名！");
+                    return;
+                }
+                data.CreateBy = currentUserVM.userInfo.Id;
+                data.Gender = $("#selectgender").val();
+                data.Academy = $("#academy").val();
+                if (data.Academy.trim() == "") {
+                    alert("请输入学生所属学院！");
+                    return;
+                }
+                data.StudentCellPhone = $("#studentcellphone").val();
+                if (data.StudentCellPhone.trim() == "") {
+                    alert("请输入学生手机号码！");
+                    return;
+                }
+                data.StudentMail = $("#studentmail").val();
+                if (data.StudentMail.trim() == "") {
+                    alert("请输入学生邮箱！");
+                    return;
+                }
+                data.Title = $("#title").val();
+                data.EnglishTitle = $("#englishtitle").val();
+                data.Abstract = CKEDITOR.instances['abstract'].getData();
+                if (data.Abstract.replace(/<.*?>/g,'').length > 2000) {
+                    alert("请保持扩展版摘要字数2000内！");
+                    return;
+                }
+                data.UpdateTime = new Date(getCurrentUTCDate());
+                data.CurrentStatus = 1;
+                data.Type = parseInt($("#papertype").val());
+                data.IdCardNumber = $("#studentIdNumber").val();
+                if (((/\d{15}/.test(data.IdCardNumber)) || (/\d{18}/.test(data.IdCardNumber)) || (/\d{17}x/i.test(data.IdCardNumber))) == false) {
+                    alert("身份证号码不合法，请核实。");
+                    return;
+                }
+                data.SchoolId = parseInt($("#selectschool").val());
+                if (isNaN(data.SchoolId)) {
+                    alert("请选择学校后再提交");
+                    return;
+                }
+                data.MajorId = parseInt($("#selectmajor").val());
+                if (isNaN(data.MajorId)) {
+                    alert("请选择专业后再提交");
+                    return;
+                }
+                data.DesignRequirement = CKEDITOR.instances['designrequirement'].getData();
+                data.Teachers = JSON.stringify(myPaperVM.ts);
+                api.odata.updateOne({
+                    SetName: "paper",
+                    Key: getParameterValue2("id"),
+                    Data: data,
+                    LoadingId: "papercontent",
+                    Success: function () {
+                        $.each($("#papercontent .fileitem[status='new']"), function (index, value) {
+                            var fileId = $(value).attr("fileId");
+                            var fileType = $(value).attr("fileType");
+                            var fileData = {};
+                            fileData.PaperId = getParameterValue2("id");
+                            fileData.FileId = fileId;
+                            fileData.Type = fileType;
+                            api.odata.addOne({
+                                SetName: "paper_file_ref",
+                                Data: fileData,
+                                Success: function () { },
+                                Failed: function () { },
+                            });
+                        });
+                        alert("保存成功！");
+                    },
+                    Failed: function (data) {
+                        alert("操作失败！{0}".format(data));
+                    },
+                });
+            });
+        }
+        function fileSelected() {
+            var file = document.getElementById('fileToUpload').files[0];
+            if (file) {
+                var fileSize = 0;
+                if (file.size > 1024 * 1024)
+                    fileSize = (Math.round(file.size * 100 / (1024 * 1024)) / 100).toString() + 'MB';
+                else
+                    fileSize = (Math.round(file.size * 100 / 1024) / 100).toString() + 'KB';
+                startUpload(file.name);
+            }
+        }
+        function startUpload(name) {
+            var uploader = UPLOADFACTORY.create();
+            uploader.fileName = name;
+            uploader.formData.append("fileToUpload", document.getElementById('fileToUpload').files[0]);
+            uploader.uploadURL = "/api/Files/UploadFiles";
+            uploader.onUploadProgressCallbackFunction = function (token, percent) {
+                var html = "<div class=\"fileitem\" token=\"{2}\" status=\"new\"><span name=\"name\">{0}</span><span name=\"percent\">{1}</span><span style='margin-left:7px;margin-top:-3px;cursor:pointer;' name='deletefile' class='ico'>I</span></div>".format(name, percent, token);
+                var containerId = "";
+                if (g.fileType == 1) {
+                    containerId = "paperlist";
+                }
+                else if (g.fileType == 2) {
+                    containerId = "attachmentlist";
+                }
+
+                if ($("#" + containerId).find("div[token={0}]".format(token)).length == 0) {
+                    $("#" + containerId).append(html);
+                    $("#" + containerId).find("div[token={0}]".format(token)).attr("fileType", g.fileType);
+                    $("#" + containerId).find(".fileitem:last-child").find("span[name='deletefile']").click(function () {
+                        if (confirm("确认删除此文件吗？")) {
+                            $(this).parents(".fileitem").remove();
+                        }
+                    });
+                }
+
+                $("#" + containerId).find("div[token={0}]".format(token)).find("span[name='percent']").text("上传进度:" + percent + "%");
+            };
+            uploader.onUploadCompleteCallbackFunction = function (fileObj, token) {
+                $("#papercontent").find("div[token={0}]".format(token)).find("span[name='percent']").text("上传完毕");
+                $("#papercontent").find("div[token={0}]".format(token)).attr("fileId", fileObj[0].Id);
+                $("#papercontent").find("div[token={0}]".format(token)).attr("realToken", fileObj[0].Token);
+            };
+            uploader.uploadFile();
+        }
+    </script>
+</head>
+<body>
+    <div id="header">
+        <script>
+            loadPage("header", "header");
+        </script>
+    </div>
+    <div id="body" class="page loadpane">
+        <div id="managenav"></div>
+        <script>
+            loadPage("managenav", "managenav", function () {
+                $("#managepaper ul").toggle();
+            });
+        </script>
+        <div id="managecontent">
+            <div id="pagetitle"><span>管理</span><span>编辑论文</span></div>
+            <div id="papercontent" class="loadpane">
+                <table class="htable" v-if="paper!=null">
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>中文标题</td>
+                        <td><input type="text" id="title" v-bind:value="paper.Title" /></td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>英文标题</td>
+                        <td><input type="text" id="englishtitle" v-bind:value="paper.EnglishTitle" /></td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>作品类型</td>
+                        <td>
+                            <select id="papertype" v-model="paper.Type">
+                                <option value=1>论文</option>
+                                <option value=2>设计</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>选择题目</td>
+                        <td>
+                            <div style="position:relative;">
+                                <span id="choosedquestion" v-bind:questionid="paper.question.Id" onclick="$('#choosequestiondialog').toggle();"><span>【{{paper.question.SerialNumber}}】{{paper.question.Name}}</span></span>
+                                <div id="choosequestiondialog" style="display:none;position:absolute;top:25px;left:0;z-index:1001;background-color:#ffffff;padding:22px 3px 3px 3px;border-left:1px solid #cccccc;border-right:1px solid #cccccc;border-bottom:1px solid #cccccc;min-width:300px;">
+                                    <form id="searchquestionform" style="margin:0;padding:0;position:relative;" onsubmit="myPaperVM.filterQuestion(this); return false;">
+                                        <input autocomplete="off" name="search" type="text" placeholder="搜索序号或问题题目,按回车键查询" style="width:99%;" />
+                                        <button style="position:absolute;top:5px;right:10px;background-color:#ffffff;border:0;"><span class="ico" style="color:#cccccc;">S</span></button>
+                                    </form>
+                                    <div style="max-height:300px;overflow-y:auto;">
+                                        <ul id="selectquestion" style="list-style:none;margin:0;padding:0;cursor:pointer;">
+                                            <li val="item.question.Id" v-for="item in filteredQuestion" onclick="myPaperVM.chooseQuestion(this)">【{{item.question.SerialNumber}}】 {{item.question.Name}}</li>
+                                        </ul>
+                                        <span style="position:absolute;top:0;right:0;cursor:pointer;" class="ico" onclick="$('#choosequestiondialog').toggle()">I</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>上传论文</td>
+                        <td>
+                            <div id="paperlist">
+                                <div class="fileitem" v-for="item in paper.paper_file_ref" v-if="item.Type==1" v-bind:rid="item.Id" status="old"><span>{{item.file.Name}}</span><span class="ico deleteFileIco">I</span></div>
+                            </div>
+                            <button id="submitpaper"><span>选择文件</span></button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>上传附件</td>
+                        <td>
+                            <div id="attachmentlist">
+                                <div class="fileitem" v-for="item in paper.paper_file_ref" v-if="item.Type==2" v-bind:rid="item.Id" status="old"><span>{{item.file.Name}}</span><span class="ico deleteFileIco">I</span></div>
+                            </div>
+                            <button id="submitattachment"><span>选择文件</span></button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>扩展版摘要<br />不超过2000字</td>
+                        <td><textarea id="abstract">{{paper.Abstract}}</textarea></td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>设计要求</td>
+                        <td><textarea id="designrequirement">{{paper.DesignRequirement}}</textarea></td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>学生姓名</td>
+                        <td><input type="text" id="studentname" v-bind:value="paper.StudentName" /></td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>学生性别</td>
+                        <td>
+                            <select id="selectgender" v-model="paper.Gender">
+                                <option value="M">男</option>
+                                <option value="F">女</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>身份证号</td>
+                        <td>
+                            <input type="text" id="studentIdNumber" v-bind:value="paper.IdCardNumber" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>学校</td>
+                        <td>
+                            <select id="selectschool" v-model="paper.SchoolId">
+                                <option value="NN">请选择</option>
+                                <option v-for="item in schoolList" v-bind:value="item.Id">{{item.Name}}</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>专业</td>
+                        <td>
+                            <select id="selectmajor" v-model="paper.MajorId">
+                                <option value="NN">请选择</option>
+                                <option v-for="item in majorList" v-bind:value="item.Id">{{item.Name}}</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>学院</td>
+                        <td>
+                            <input type="text" id="academy" v-bind:value="paper.Academy" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>手机</td>
+                        <td>
+                            <input type="text" id="studentcellphone" v-bind:value="paper.StudentCellPhone" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>邮箱</td>
+                        <td>
+                            <input type="text" id="studentmail" v-bind:value="paper.StudentMail" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="text-align:left;padding-left:18px;"><span>高校指导老师信息</span></td>
+                    </tr>
+                    <tr>
+                        <td>姓名</td>
+                        <td><input type="text" v-model="ts[0].Name" /></td>
+                    </tr>
+                    <tr>
+                        <td>单位</td>
+                        <td><input type="text" v-model="ts[0].Company" /></td>
+                    </tr>
+                    <tr>
+                        <td>职称</td>
+                        <td><input type="text" v-model="ts[0].Title" /></td>
+                    </tr>
+                    <tr>
+                        <td>手机</td>
+                        <td><input type="text" v-model="ts[0].Mobile" /></td>
+                    </tr>
+                    <tr>
+                        <td>邮箱</td>
+                        <td><input type="text" v-model="ts[0].Email" /></td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="text-align:left;padding-left:18px;"><span>企业指导老师信息</span></td>
+                    </tr>
+                    <tr>
+                        <td>姓名</td>
+                        <td><input type="text" v-model="ts[1].Name" /></td>
+                    </tr>
+                    <tr>
+                        <td>单位</td>
+                        <td><input type="text" v-model="ts[1].Company" /></td>
+                    </tr>
+                    <tr>
+                        <td>职称</td>
+                        <td><input type="text" v-model="ts[1].Title" /></td>
+                    </tr>
+                    <tr>
+                        <td>手机</td>
+                        <td><input type="text" v-model="ts[1].Mobile" /></td>
+                    </tr>
+                    <tr>
+                        <td>邮箱</td>
+                        <td><input type="text" v-model="ts[1].Email" /></td>
+                    </tr>
+                </table>
+                <div style="display:none;">
+                    <form id="uploadform" enctype="multipart/form-data" method="post" action="">
+                        <input type="file" class="" name="fileToUpload" id="fileToUpload" onchange="fileSelected();" />
+                    </form>
+                </div>
+                <div class="savecancel"><button id="savepaper"><span>保存</span></button><button><span>取消</span></button></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        var myPaperVM = new Vue({
+            el: '#papercontent',
+            data: {
+                paper: null,
+                schoolList: null,
+                majorList: null,
+                filteredQuestion: null,
+                ts: []
+            },
+            methods: {
+                getDetail: function () {
+                    var self = this;
+                    api.odata.getOne({
+                        LoadingId: "papercontent",
+                        SetName: "paper",
+                        Key: getParameterValue2('id'),
+                        Uri: "?$expand=question,paper_file_ref($expand=file),match($expand=match_question_ref($expand=question($select=Id,Name,SerialNumber)))",
+                        Success: function (data) {
+                            self.paper = data;
+                            self.filteredQuestion = data.match.match_question_ref;
+                            self.ts = JSON.parse(data.Teachers);
+                            Vue.nextTick(function () {
+                                initCKEditor('abstract');
+                                initCKEditor('designrequirement');
+                                init();
+                                self.regDeleteFileButton();
+                                $("#selectschool").change(function () {
+                                    var i = $(this).val();
+                                    self.paper.MajorId = 'NN';
+                                    self.getMajors(i);
+                                });
+                                self.getMajors(self.paper.SchoolId);
+                            });
+                        },
+                        Failed: function (data) {
+                            alert("操作失败！{0}".format(data));
+                        },
+                    });
+                },
+                regDeleteFileButton: function () {
+                    var self = this;
+                    $("#papercontent .deleteFileIco").click(function () {
+                        var rid = $(this).parents(".fileitem").attr("rid");
+                        self.deleteFile(rid);
+                    });
+                },
+                deleteFile: function (id) {
+                    if (confirm("确认删除这个文件吗？") == false) {
+                        return;
+                    }
+                    api.odata.DeleteOne({
+                        SetName: "paper_file_ref",
+                        Key: id,
+                        Success: function () {
+                            $("#papercontent .fileitem[rid={0}]".format(id)).remove();
+                        }
+                    });
+                },
+                getSchools: function () {
+                    var self = this;
+                    api.odata.getList({
+                        SetName: "school",
+                        Uri: "?$orderby=SpellWord",
+                        Success: function (data) {
+                            self.schoolList = data.value;
+                            Vue.nextTick(function () {
+                                self.getDetail();
+                            });
+                        }
+                    });
+                },
+                getMajors: function (schoolId) {
+                    var self = this;
+                    api.odata.getList({
+                        SetName: "major",
+                        Uri: "?$filter=SchoolId eq {0}".format(schoolId),
+                        Success: function (data) {
+                            self.majorList = data.value;
+                        }
+                    });
+                },
+                filterQuestion: function (obj) {
+                    var self = this;
+                    var searchText = $(obj).find("input[name='search']").val();
+                    self.filteredQuestion = [];
+                    $.each(self.paper.match.match_question_ref, function (index, value) {
+                        if ((value.question.Name + value.question.SerialNumber).indexOf(searchText) != -1) {
+                            self.filteredQuestion.push(value);
+                        }
+                    });
+                },
+                chooseQuestion: function (obj) {
+                    var self = this;
+                    var questionId = $(obj).attr("val");
+                    var questionName = $(obj).text();
+                    $("#choosedquestion").attr("questionid", questionId);
+                    $("#choosedquestion span").text(questionName + " 【点击重新选择】");
+                    $("#choosequestiondialog").hide();
+                    $("input[name='search']").val("");
+                    self.filterQuestion($("#searchquestionform"));
+                }
+            }
+        });
+        myPaperVM.getSchools();
+    </script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+﻿<ul>
+    <li id="managearticle">
+        <a href="javascript:void(0)"><span class="ico">&#57368;</span>管理文章</a>
+        <ul>
+            <li><a href="manage_newarticle.html">新建文章</a></li>
+            <li><a href="manage_articlelist.html">文章列表</a></li>
+            <li><a href="manage_editarticle.html?id=21">大赛章程</a></li>
+            <li><a href="manage_editarticle.html?id=22">大赛细则</a></li>
+            <li><a href="manage_editarticle.html?id=24">联系我们</a></li>
+        </ul>
+    </li>
+    <li id="manageuser">
+        <a href="javascript:void(0)"><span class="ico">&#57375;</span>用户管理</a>
+        <ul>
+            <li><a href="manage_newuser.html">新建用户</a></li>
+            <li><a href="manage_userlist.html?type=4">专业联系人列表</a></li>
+            <li><a href="manage_userlist.html?type=1,2">专家列表</a></li>
+            <li><a href="manage_userlist.html?type=8">操作员列表</a></li>
+            <li><a href="manage_userlist.html?type=16">管理员列表</a></li>
+        </ul>
+    </li>
+    <li id="managepaper">
+        <a href="javascript:void(0)"><span class="ico">&#57913;</span>论文管理</a>
+        <ul>
+            <li><a href="manage_paperlist.html">论文列表</a></li>
+        </ul>
+    </li>
+    <li id="managequestion">
+        <a href="javascript:void(0)"><span class="ico">&#57890;</span>题目管理</a>
+        <ul>
+            <li><a href="manage_newquestion.html">添加题目</a></li>
+            <li><a href="manage_questionlist.html">题目列表</a></li>
+        </ul>
+    </li>
+    <li id="managematch">
+        <a href="javascript:void(0)"><span class="ico">&#57971;</span>大赛管理</a>
+        <ul>
+            <li><a href="manage_newmatch.html">新建大赛</a></li>
+            <li><a href="manage_matchlist.html">大赛列表</a></li>
+        </ul>
+    </li>
+    <li id="managemessage">
+        <a href="javascript:void(0)"><span class="ico">M</span>消息管理</a>
+        <ul>
+            <li><a href="manage_messagetemplate.html">消息模板</a></li>
+        </ul>
+    </li>
+    <li id="managemajor">
+        <a href="javascript:void(0)"><span class="ico">&#57954;</span>专业管理</a>
+        <ul>
+            <li><a href="manage_majorlist.html">专业列表</a></li>
+        </ul>
+    </li>
+    <li id="managedownload">
+        <a href="javascript:void(0)"><span class="ico">&#57859;</span>下载管理</a>
+        <ul>
+            <li><a href="manage_downloadcenter.html">下载中心</a></li>
+        </ul>
+    </li>
+</ul>
+<script>
+    $("#managenav>ul>li>a").click(function () {
+        $(this).parents("li").find("ul").toggle();
+    });
+</script>

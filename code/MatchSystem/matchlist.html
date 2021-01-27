@@ -1,0 +1,131 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>大赛列表</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <script src="content/js/toastr.js"></script>
+    <script src="content/js/vue.js"></script>
+    <script src="content/js/jquery-3.1.1.min.js"></script>
+    <script src="content/js/medm.js?201805042108"></script>
+    <script src="content/js/spinner.js"></script>
+    <script src="content/js/utility.js?201705231258"></script>
+    <link rel="stylesheet" type="text/css" href="content/css/medm.css" />
+    <link rel="stylesheet" type="text/css" href="content/css/common.css" />
+    <style>
+    </style>
+    <script>
+        $(document).ready(function () {
+        });
+    </script>
+</head>
+<body>
+    <div id="header">
+        <script>
+            loadPage("header", "header");
+        </script>
+    </div>
+    <div id="body" class="page">
+        <div id="pagetitle"><span>首页</span><span>大赛列表</span></div>
+        <div id="matchlist" class="loadpane">
+            <table class="vtable">
+                <tr>
+                    <td>大赛名称</td>
+                    <td style="width:260px;">时间</td>
+                    <td style="width:100px;">当前阶段</td>
+                </tr>
+                <tr v-for="match in matchList" v-if="show==true">
+                    <td><a v-bind:href="'match.html?id='+match.Id">{{match.Title}}</a></td>
+                    <td>{{getDateString(match.StartTime)}}至{{getDateString(match.EndTime)}}</td>
+                    <td>{{match.Status}}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    <div id="footer"></div>
+    <script>
+        loadPage("footer", "footer");
+    </script>
+    <script>
+        var matchlistVm = new Vue({
+            el: '#matchlist',
+            data: {
+                matchList: [],
+                show:false
+            },
+            methods: {
+                getMatchList:function() {
+                    var self = this;
+                    api.odata.getList({
+                        LoadingId: "matchlist",
+                        SetName: "match",
+                        Uri: "?$orderby=CreateTime desc",
+                        Success: function (data) {
+                            self.matchList = data.value;
+                            self.show = true;
+                            $.each(data.value, function (index, value) {
+                                var StartTime = value.StartTime;
+                                var EndTime = value.EndTime;
+                                var RegisterStartTime = value.RegisterStartTime;
+                                var RegisterEndTime = value.RegisterEndTime;
+                                var Review1StartTime = value.Review1StartTime;
+                                var Review1EndTime = value.Review1EndTime;
+                                var Review2StartTime = value.Review2StartTime;
+                                var Review2EndTime = value.Review2EndTime;
+                                var Review3StartTime = value.Review3StartTime;
+                                var Review3EndTime = value.Review3EndTime;
+                                var date = new Date();
+                                var status = "";
+                                if (date.toISOString() < StartTime) {
+                                    status = "未开始";
+                                }
+                                else if (date.toISOString() > EndTime) {
+                                    status = "已结束";
+                                }
+                                else if (date.toISOString() > RegisterStartTime && date.toISOString() < RegisterEndTime) {
+                                    status = "提交论文阶段";
+                                }
+                                else if (date.toISOString() > Review1StartTime && date.toISOString() < Review1EndTime) {
+                                    status = "形审阶段";
+                                }
+                                else if (date.toISOString() > Review2StartTime && date.toISOString() < Review2EndTime) {
+                                    status = "函评阶段";
+                                }
+                                else if (date.toISOString() > Review3StartTime && date.toISOString() < Review3EndTime) {
+                                    status = "会评阶段";
+                                }
+                                else if (date.toISOString() > StartTime) {
+                                    status = "计划中";
+                                }
+                                self.matchList[index].Status = status;
+                            });
+                        },
+                        Failed: function (data) {
+                            alert("操作失败！{0}".format(data));
+                        },
+                        Fake: [{
+                            Id: 1,
+                            Title: "比赛名称1",
+                            StartTime: "2017-04-10",
+                            EndTime: "2017-04-30",
+                            Status: "提交设计"
+                        },
+                        {
+                            Id: 2,
+                            Title: "比赛名称2",
+                            StartTime: "2017-04-10",
+                            EndTime: "2017-04-30",
+                            Status: "提交设计"
+                        }
+                        ]
+                    });
+                },
+                getDateString: function (date) {
+                    return getDateString(date);
+                },
+            }
+        });
+        matchlistVm.getMatchList();
+    </script>
+</body>
+</html>

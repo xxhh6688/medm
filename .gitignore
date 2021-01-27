@@ -1,0 +1,11 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/code/.vs
+/.vs
+/code/MatchSystem/bin
+/code/MatchSystem/content/js/ckeditor
+/code/MatchSystem/obj/Debug
+/code/MatchSystem/Properties/PublishProfiles
+/code/packages

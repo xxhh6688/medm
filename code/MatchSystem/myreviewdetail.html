@@ -1,0 +1,287 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>我的评审详情</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <script src="content/js/toastr.js"></script>
+    <script src="content/js/vue.js"></script>
+    <script src="content/js/spinner.js"></script>
+    <script src="content/js/jquery-3.1.1.min.js"></script>
+    <script src="content/js/medm.js?201805042108"></script>
+    <script src="content/js/utility.js?201705231258"></script>
+    <link rel="stylesheet" type="text/css" href="content/css/medm.css" />
+    <link rel="stylesheet" type="text/css" href="content/css/common.css" />
+    <style>
+        .reviewitem:nth-child(odd) {
+            margin-bottom: 20px;
+        }
+
+        .reviewitem input {
+            width: 100%;
+            height: 30px;
+            line-height: 30px;
+            font-size: 18px;
+            padding-left: 5px;
+            box-sizing: border-box;
+        }
+
+        .reviewitem textarea {
+            width: 100%;
+            font-size: 18px;
+            padding-left: 5px;
+            box-sizing: border-box;
+        }
+    </style>
+    <script>
+        var g = {};
+        $(document).ready(function () {
+            delayGetReviewPaper();
+            $("#savereviewscore").click(function () {
+                saveReviewScore();
+            });
+        });
+        function delayGetReviewPaper() {
+            if (typeof (currentUserVM) != "undefined" && typeof (currentUserVM.userInfo.Id) != "undefined") {
+                myReviewDetailVM.getDetail();
+                return;
+            }
+            setTimeout(function () {
+                delayGetReviewPaper();
+            }, 200);
+        }
+        function saveReviewScore() {
+            var reviewItem = reviewTemplate;
+            if (myReviewDetailVM.paper.CurrentStatus == 1) {
+                reviewItem = reviewTemplate;
+            }
+            else if (myReviewDetailVM.paper.CurrentStatus == 2) {
+                reviewItem = reviewTemplate2;
+            }
+
+            $.each($(".reviewitem"), function (index, value) {
+                var id = $(value).attr("templateid");
+                var getScore = parseInt($(value).find("input[name='score']").val());
+                if (isNaN(getScore)) {
+                    alert("输入分值不合法请检查。");
+                    return false;
+                }
+                var comment = $(value).find("textarea[name='comment']").val().trim();
+
+                $.each(reviewItem.Options, function (index2, value2) {
+                    if (value2.Id == id) {
+                        value2.GetScore = getScore;
+                        value2.Comment = comment;
+                    }
+                });
+            });
+
+            caculateTotalScore();
+
+            var totalScore = parseInt($("#totalscore").text());
+            var data = {};
+            data.Score = totalScore;
+            data.Comment = JSON.stringify(reviewItem);
+            
+            api.odata.updateOne({
+                LoadingId: "paper",
+                SetName: "paper_review_expert",
+                Key: myReviewDetailVM.paper_review_expert.Id,
+                Data: data,
+                Success: function () {
+                    alert("保存成功！");
+                },
+                Failed: function (data) {
+                    alert("操作失败！{0}".format(data));
+                },
+            });
+        }
+        function caculateTotalScore() {
+            var totalScore = 0;
+            $.each($(".reviewitem input[name='score']"), function (index, value) {
+                var score = parseInt($(value).val());
+                if (isNaN(score)) {
+                    alert("输入分值不合法请检查。");
+                    return false;
+                }
+                totalScore += score;
+            });
+
+            $("#totalscore").text(totalScore);
+        }
+    </script>
+</head>
+<body>
+    <div id="header">
+        <script>
+            loadPage("header", "header");
+        </script>
+    </div>
+    <div id="body" class="page loadpane">
+        <div id="pagetitle"><span>首页</span><span>我的评审详情</span></div>
+        <div id="paper" class="loadpane">
+            <table class="htable" v-if="paper != null">
+                <tr>
+                    <td>编号</td>
+                    <td>{{paper.Id}}</td>
+                </tr>
+                <tr>
+                    <td>论文标题</td>
+                    <td>{{paper.Title}}</td>
+                </tr>
+                <tr>
+                    <td>选择题目</td>
+                    <td><a v-bind:href="''+paper.question.Id">{{paper.question.SerialNumber}} {{paper.question.Name}}</a></td>
+                </tr>
+                <tr>
+                    <td>当前状态</td>
+                    <td>{{translatePaperCurrentStatus(paper.CurrentStatus)}}</td>
+                </tr>
+                <tr>
+                    <td>大赛类型</td>
+                    <td>{{translateMatchType(paper.match.Type)}}</td>
+                </tr>
+                <tr>
+                    <td>评审截至时间</td>
+                    <td>{{getDateString(paper.ReviewStartTime)}}至{{getDateString(paper.ReviewEndTime)}}</td>
+                </tr>
+                <tr>
+                    <td>摘要</td>
+                    <td v-html="paper.Abstract"></td>
+                </tr>
+                <tr>
+                    <td>论文</td>
+                    <td>
+                        <div v-for="item in paper.paper_file_ref" v-if="item.Type==1"><a v-bind:href="'/api/Files/DownloadFile?fileToken='+item.file.Token"><span>{{item.file.Name}}</span></a></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>附件</td>
+                    <td>
+                        <div v-for="item in paper.paper_file_ref" v-if="item.Type==2"><a v-bind:href="'/api/Files/DownloadFile?fileToken='+item.file.Token"><span>{{item.file.Name}}</span></a></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>评分</td>
+                    <td>
+                        <div id="reviewcommenttemplate">
+                            <table style="width:100%;">
+                                <tr>
+                                    <td style="width:500px;text-align:left;">评分项及分值</td>
+                                    <td style='width:60px;'>打分分值</td>
+                                    <td style="">注释</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>综合分</td>
+                    <td>
+                        <span id="totalscore">{{paper_review_expert.Score}}</span>
+                    </td>
+                </tr>
+            </table>
+            <div class="savecancel"><button id="savereviewscore"><span>保存评分</span></button></div>
+        </div>
+    </div>
+    <div id="footer"></div>
+    <script>
+        loadPage("footer", "footer");
+        var myReviewDetailVM = new Vue({
+            el: "#paper",
+            data: {
+                paper: null,
+                paper_review_expert: {Score:0}
+            },
+            methods: {
+                getDetail: function () {
+                    var self = this;
+                    api.odata.getOne({
+                        LoadingId: "paper",
+                        SetName: "paper",
+                        Key: getParameterValue2("id"),
+                        Uri: "?$expand=paper_review_expert($filter=ExpertId eq {0}),question($select=Id,Name,SerialNumber),match($select=Id,Type,ReviewStartTime,Review1StartTime,Review2StartTime,ReviewEndTime,Review1EndTime,Review2EndTime),paper_file_ref($expand=file)".format(currentUserVM.userInfo.Id),
+                        Success: function (data) {
+                            self.paper = data;
+                            if (self.paper.CurrentStatus == 1) {
+                                self.paper.ReviewStartTime = self.paper.match.ReviewStartTime;
+                                self.paper.ReviewEndTime = self.paper.match.ReviewEndTime;
+                            }
+                            else if (self.paper.CurrentStatus == 2) {
+                                self.paper.ReviewStartTime = self.paper.match.Review1StartTime;
+                                self.paper.ReviewEndTime = self.paper.match.Review1EndTime;
+                            }
+                            else if (self.paper.CurrentStatus == 3) {
+                                self.paper.ReviewStartTime = self.paper.match.Review2StartTime;
+                                self.paper.ReviewEndTime = self.paper.match.Review2EndTime;
+                            }
+                            Vue.nextTick(function () {
+                                self.formatReviewTemplate(self.paper.CurrentStatus);
+                            })
+
+                            var d = new Date().toISOString();
+                            if (d > self.paper.ReviewEndTime) {
+                                alert("论文评审已经结束");
+                                window.location.href = "/myreviewlist.html";
+                                return;
+                            }
+
+                            if (d < self.paper.ReviewStartTime) {
+                                alert("论文评审还未开始");
+                                window.location.href = "/myreviewlist.html";
+                                return;
+                            }
+                        },
+                        Failed: function (data) {
+                            alert("操作失败！{0}".format(data));
+                        },
+                    });
+                },
+                getDateString: function (date) {
+                    return getDateString(date);
+                },
+                formatReviewTemplate: function (type) {
+                    var self = this;
+                    var items = reviewTemplate;
+                    if (type == 1) {
+                        items = reviewTemplate;
+                    }
+                    else if (type == 2) {
+                        items = reviewTemplate2;
+                    }
+
+                    var pre = null;
+
+                    $.each(self.paper.paper_review_expert, function (a, b) {
+                        if (b.StatusType == type) {
+                            pre = b;
+                            self.paper_review_expert = pre;
+                            return false;
+                        }
+                    });
+
+                    if (pre!=null && pre.Comment != null && pre.Comment.trim() != "") {
+                        items = JSON.parse(pre.Comment.trim());
+                    }
+
+                    $.each(items.Options, function (index, value) {
+                        var temp = "<tr templateid={4} class='reviewitem'>" +
+                                     "<td style='text-align:left;vertical-align:top;'><span>{0}:满分值：{1}分</span><div><span style='font-size:12px;color:#666666;'>{5}</span></div></td>" +
+                                     "<td style='vertical-align:top;'><input style='width:60px;' name=\"score\" type=\"text\" value=\"{2}\" /></td>" +
+                                     "<td style='vertical-align:top;'><textarea style='width:100%;' name=\"comment\" rows=\"5\">{3}</textarea></div>" +
+                                   "</tr>";
+                        temp = temp.format(value.Description, value.TotalScore, value.GetScore, value.Comment, value.Id, value.Hint);
+                        $("#reviewcommenttemplate table").append(temp);
+                    });
+                    $(".reviewitem input[name='score']").change(function () {
+                        caculateTotalScore();
+                    });
+                },
+                translateMatchType: translateMatchType,
+                translatePaperCurrentStatus: translatePaperCurrentStatus
+            }
+        });
+    </script>
+</body>
+</html>

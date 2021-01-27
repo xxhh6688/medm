@@ -1,0 +1,188 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>管理 编辑题目</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <script src="content/js/toastr.js"></script>
+    <script src="content/js/jquery-3.1.1.min.js"></script>
+    <script src="content/js/medm.js?201805042108"></script>
+    <script src="content/js/utility.js?201705231258"></script>
+    <script src="content/js/ckeditor/ckeditor.js"></script>
+    <script src="content/js/spinner.js"></script>
+    <script src="content/js/vue.js"></script>
+    <link rel="stylesheet" type="text/css" href="content/css/medm.css" />
+    <link rel="stylesheet" type="text/css" href="content/css/common.css" />
+    <style>
+        .page{
+            margin:0;
+            width:100%;
+        }
+        #newquestion input{
+            width:100%;
+            height:30px;
+            line-height:30px;
+            padding-left:5px;
+            box-sizing:border-box;
+            border:0;
+        }
+        #newquestion select{
+            width:100%;
+            height:30px;
+            line-height:30px;
+            padding-left:5px;
+            box-sizing:border-box;
+            border:0;
+        }
+    </style>
+    <script>
+        $(document).ready(function () {
+            questionVM.init();
+        });
+        function reg() {
+            initCKEditor('description');
+            initCKEditor('requirement');
+        }
+    </script>
+</head>
+<body>
+    <div id="header">
+        <script>
+            loadPage("header", "header");
+        </script>
+    </div>
+    <div id="body" class="page">
+        <div id="managenav"></div>
+        <script>
+            loadPage("managenav", "managenav", function () {
+                $("#managequestion ul").toggle();
+            });
+        </script>
+        <div id="managecontent">
+            <div id="pagetitle"><span>首页</span><span>管理</span><span>编辑题目</span></div>
+            <div id="managecontentdetail">
+                <table id="newquestion" class="htable">
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>标题</td>
+                        <td><input type="text" v-model="question.Name" /></td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>类型</td>
+                        <td>
+                            <select v-model="question.Type">
+                                <option value="1">开放题目</option>
+                                <option value="2">定向题目</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>提出</td>
+                        <td><input type="text" v-model="question.Support" /></td>
+                    </tr>
+                    <tr>
+                        <td>所属专业</td>
+                        <td><input type="text" v-model="question.Industry" /></td>
+                    </tr>
+                    <tr>
+                        <td>来自公司</td>
+                        <td><input type="text" v-model="question.FromCompany" /></td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>编号</td>
+                        <td><input type="text" v-model="question.SerialNumber" /></td>
+                    </tr>
+                    <tr>
+                        <td>设计需求</td>
+                        <td>
+                            <textarea id="requirement">{{question.DesignRequirement}}</textarea>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>描述</td>
+                        <td>
+                            <textarea id="description">{{question.Description}}</textarea>
+                        </td>
+                    </tr>
+                </table>
+                <div class="savecancel"><button id="deleteQuestion" v-on:click="deleteQuestion();"><span>删除</span></button><button v-on:click="submit();"><span>提交</span></button><button onclick="window.history.back();"><span>取消</span></button></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        var model = function(){
+            this.value = {
+                Type: 1,
+                Name: "",
+                Description: "",
+                Support: "",
+                Industry: "",
+                FromCompany: "",
+                DesignRequirement: "",
+                SerialNumber: 0,
+                UpdateBy: null,
+                CreateBy: null,
+                CreateTime: "",
+                UpdateTime: ""
+            };
+        }
+        var questionVM = new Vue({
+            el: "#managecontent",
+            data: {
+                question: new model().value
+            },
+            methods: {
+                submit: function () {
+                    var self = this;
+                    self.question.UpdateBy = currentUserVM.userInfo.Id;
+                    self.question.UpdateTime = new Date(getCurrentUTCDate());
+                    self.question.Description = CKEDITOR.instances['description'].getData();
+                    self.question.DesignRequirement = CKEDITOR.instances['requirement'].getData();
+                    api.odata.updateOne({
+                        SetName: "question",
+                        Key: self.question.Id,
+                        Data: self.question,
+                        Success: function () {
+                            if (confirm("修改成功！是否留在本页？")) {
+                                window.location.reload();
+                                return;
+                            }
+                            window.history.back();
+                        },
+                        Failed: function (data) {
+                            alert("操作失败！{0}".format(data));
+                        },
+                    });
+                },
+                deleteQuestion: function () {
+                    if (confirm("确认删除此题目吗？")) {
+                        api.odata.DeleteOne({
+                            SetName: "question",
+                            Key: getParameterValue2("id"),
+                            Success: function () {
+                                alert("删除成功。");
+                                window.location.href = "manage_questionlist.html";
+                            }
+                        });
+                    }
+                },
+                init: function () {
+                    var self = this;
+                    var qid = getParameterValue2("id");
+                    api.odata.getOne({
+                        SetName: "question",
+                        Key: qid,
+                        Uri:'',
+                        Success: function (data) {
+                            self.question = data;
+                            Vue.nextTick(function () {
+                                reg();
+                            });
+                        },
+                        LoadingId: "managecontent"
+                    });
+                }
+            }
+        });
+    </script>
+</body>
+</html>

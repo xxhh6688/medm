@@ -1,0 +1,49 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>管理 编辑消息模板</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <script src="content/js/toastr.js"></script>
+    <script src="content/js/jquery-3.1.1.min.js"></script>
+    <script src="content/js/medm.js?201805042108"></script>
+    <script src="content/js/utility.js?201705231258"></script>
+    <script src="content/js/ckeditor/ckeditor.js"></script>
+    <link rel="stylesheet" type="text/css" href="content/css/medm.css" />
+    <link rel="stylesheet" type="text/css" href="content/css/common.css" />
+    <style>
+        .page{
+            margin:0;
+            width:100%;
+        }
+    </style>
+    <script>
+        $(document).ready(function () {
+            reg();
+        });
+        function reg() {
+            initCKEditor('messagetemplate');
+        }
+    </script>
+</head>
+<body>
+    <div id="header">
+        <script>
+            loadPage("header", "header");
+        </script>
+    </div>
+    <div id="body" class="page">
+        <div id="managenav"></div>
+        <script>
+            loadPage("managenav", "managenav");
+        </script>
+        <div id="managecontent">
+            <div id="pagetitle"><span>首页</span><span>管理</span><span>管理消息模板</span></div>
+            <div id="managecontentdetail">
+                <textarea id="messagetemplate"></textarea>
+                <div class="savecancel"><button><span>提交</span></button><button><span>取消</span></button></div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

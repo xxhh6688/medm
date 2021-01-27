@@ -1,0 +1,458 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>管理 论文分配详情</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <script src="content/js/toastr.js"></script>
+    <script src="content/js/jquery-3.1.1.min.js"></script>
+    <script src="content/js/medm.js?201805042108"></script>
+    <script src="content/js/vue.js"></script>
+    <script src="content/js/spinner.js"></script>
+    <script src="content/js/utility.js?201705231258"></script>
+    <script src="content/js/ckeditor/ckeditor.js"></script>
+    <script src="content/js/dialog.js"></script>
+    <link rel="stylesheet" type="text/css" href="content/css/medm.css" />
+    <link rel="stylesheet" type="text/css" href="content/css/common.css" />
+    <style>
+        [v-cloak] { display:none; }
+        .page {
+            margin: 0;
+            width: 100%;
+        }
+
+        .useritem {
+            background-color: #1f801d;
+            color: #ffffff;
+            border-radius: 3px;
+            height: 30px;
+            line-height: 30px;
+            margin-right: 5px;
+            padding-left: 5px;
+            padding-right: 25px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .useritemfunc {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        #chooseUserDialog {
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background-color: #ffffff;
+            display: none;
+            padding: 18px;
+        }
+
+        #searchuser input[type='text'] {
+            width: 400px;
+            height: 30px;
+            line-height: 30px;
+            font-size: 16px;
+            padding-left: 5px;
+            box-sizing: border-box;
+        }
+
+        #searchuser {
+            text-align: right;
+            position: relative;
+            margin-bottom: 18px;
+        }
+
+            #searchuser .search {
+                position: absolute;
+                top: 6px;
+                right: 9px;
+                background-color: #ffffff;
+                border: 0;
+            }
+
+        .commentcontainer {
+            height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+    <script>
+        var g = {};
+        $(document).ready(function () {
+            reg();
+        });
+        function reg() {
+            $("#canceladd").click(function () {
+                $("#chooseUserDialog").hide();
+            });
+            $("#addusers").click(function () {
+                $.each($("#chooseUserDialog input[name='checkuser']"), function (index, value) {
+                    var userId = $(value).attr("userid");
+                    var skip = false;
+                    if ($(value).prop("checked")) {
+                        $.each(paperDetailVM.paper.paper_review_expert, function (index2, value2) {
+                            if (g.type == value2.StatusType && value2.ExpertId == userId) {
+                                skip = true;
+                                return false;
+                            }
+                        });
+                        var data = {
+                            ExpertId: parseInt(userId),
+                            PaperId: parseInt(getParameterValue2("id")),
+                            StatusType: g.type,
+                            CreateTime: new Date(getCurrentUTCDate()),
+                            Updatetime: new Date(getCurrentUTCDate()),
+                        };
+                        if (skip == false) {
+                            api.odata.addOne({
+                                SetName: "paper_review_expert",
+                                Data: data,
+                                Success: function () {
+                                    paperDetailVM.get();
+                                }
+                            });
+                        }
+                    }
+                });
+                $("#chooseUserDialog").hide();
+            });
+        }
+        function showAddUserDialog() {
+            $("#chooseUserDialog").show();
+            $("#chooseUserDialog input[type='checkbox']").prop("checked", false);
+            $("#searchtext").val("");
+            userListVm.showUserList = userListVm.userList;
+            if (g.type != 1) {
+                $("#userlist_operator").hide();
+                $("#userlist_expert").show();
+            }
+            else {
+                $("#userlist_operator").show();
+                $("#userlist_expert").hide();
+            }
+        }
+        function deleteUserItem(rid) {
+            api.odata.DeleteOne({
+                SetName: "paper_review_expert",
+                Key: rid,
+                Success: function () {
+                    paperDetailVM.get();
+                }
+            });
+        }
+    </script>
+</head>
+<body>
+    <div id="header">
+        <script>
+            loadPage("header", "header");
+        </script>
+    </div>
+    <div id="body" class="page">
+        <div id="managenav"></div>
+        <script>
+            loadPage("managenav", "managenav", function () {
+                $("#managepaper>ul").toggle();
+            });
+        </script>
+        <div id="managecontent">
+            <div id="pagetitle"><span>首页</span><span>管理</span><span>论文详情</span></div>
+            <div id="managecontentdetail" class="loadpane">
+                <table class="htable" id="papercontent" v-if="paper!=null" v-cloak>
+                    <tr>
+                        <td>论文 标题</td>
+                        <td>{{paper.Title}}</td>
+                    </tr>
+                    <tr>
+                        <td>论文 编号</td>
+                        <td>{{paper.Id}}</td>
+                    </tr>
+                    <tr>
+                        <td>大赛题目</td>
+                        <td>{{paper.match.Title}}</td>
+                    </tr>
+                    <tr>
+                        <td>大赛编号</td>
+                        <td>{{paper.match.Id}}</td>
+                    </tr>
+                    <tr>
+                        <td>论文</td>
+                        <td>
+                            <div v-for="f in paper.paper_file_ref" v-if="f.Type == 1">
+                                <a v-bind:href="'/api/Files/DownloadFile?fileToken='+f.file.Token"><span>{{f.file.Name}}</span></a>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>附件</td>
+                        <td>
+                            <div v-for="f in paper.paper_file_ref" v-if="f.Type == 2">
+                                <a v-bind:href="'/api/Files/DownloadFile?fileToken='+f.file.Token"><span>{{f.file.Name}}</span></a>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>学校</td>
+                        <td>{{paper.school.Name}}</td>
+                    </tr>
+                    <tr>
+                        <td>专业</td>
+                        <td>{{paper.major.Name}}</td>
+                    </tr>
+                    <tr>
+                        <td>联系人信息</td>
+                        <td>
+                            <div>{{paper.user.Name}}</div>
+                            <div>{{paper.user.CellPhone}}</div>
+                            <div>{{paper.user.Mail}}</div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>大赛时间</td>
+                        <td>{{getDateString(paper.match.StartTime)}}至{{getDateString(paper.match.EndTime)}}</td>
+                    </tr>
+                    <tr>
+                        <td>提交论文时间</td>
+                        <td>{{getDateString(paper.match.RegisterStartTime)}}至{{getDateString(paper.match.RegisterEndTime)}}</td>
+                    </tr>
+                    <tr>
+                        <td>形审阶段</td>
+                        <td>{{getDateString(paper.match.ReviewStartTime)}}至{{getDateString(paper.match.ReviewEndTime)}}</td>
+                    </tr>
+                    <tr>
+                        <td>函评阶段</td>
+                        <td>{{getDateString(paper.match.Review1StartTime)}}至{{getDateString(paper.match.Review1EndTime)}}</td>
+                    </tr>
+                    <tr>
+                        <td>会评阶段</td>
+                        <td>{{getDateString(paper.match.Review2StartTime)}}至{{getDateString(paper.match.Review2EndTime)}}</td>
+                    </tr>
+                    <tr>
+                        <td>形审分配</td>
+                        <td id="review1userlist">
+                            <span class="useritem" v-bind:userid="item.user.Id" v-for="item in paper.paper_review_expert" v-if="item.StatusType==1">{{item.user.Name}}<span v-bind:rid="item.Id" name="removeuser" class="ico useritemfunc">I</span></span><span id="adduseritem1" class="useritem">添加用户<span class="ico useritemfunc">]</span></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>函评分配</td>
+                        <td id="review2userlist"><span class="useritem" v-for="item in paper.paper_review_expert" v-if="item.StatusType==2">{{item.user.Name}}<span v-bind:rid="item.Id" name="removeuser" class="ico useritemfunc">I</span></span><span id="adduseritem2" class="useritem">添加用户<span class="ico useritemfunc">]</span></span></td>
+                    </tr>
+                    <tr>
+                        <td>会评分配</td>
+                        <td id="review3userlist"><span class="useritem" v-for="item in paper.paper_review_expert" v-if="item.StatusType==3">{{item.user.Name}}<span v-bind:rid="item.Id" name="removeuser" class="ico useritemfunc">I</span></span><span id="adduseritem3" class="useritem">添加用户<span class="ico useritemfunc">]</span></span></td>
+                    </tr>
+                    <tr>
+                        <td>形审结论</td>
+                        <td>
+                            <div v-for="item in paper.paper_review_expert" v-if="item.StatusType==1">
+                                <div><span>{{item.user.Name}}:{{item.Score==0?'没有评分':item.Score}}</span></div>
+                                <div class="commentcontainer" v-html="formatReviewTemplate(item.Comment)" v-if="item.Comment!=null&&item.Comment.trim()!=''"></div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>函评结论</td>
+                        <td>
+                            <div v-for="item in paper.paper_review_expert" v-if="item.StatusType==2">
+                                <div><span>{{item.user.Name}}:{{item.Score==0?'没有评分':item.Score}}</span></div>
+                                <div class="commentcontainer" v-html="formatReviewTemplate(item.Comment)" v-if="item.Comment!=null&&item.Comment.trim()!=''"></div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>会评结论</td>
+                        <td>
+                            <div v-for="item in paper.paper_review_expert" v-if="item.StatusType==3">
+                                <div><span>{{item.user.Name}}:{{item.Score==0?'没有评分':item.Score}}</span></div>
+                                <div class="commentcontainer" v-html="formatReviewTemplate(item.Comment)" v-if="item.Comment!=null&&item.Comment.trim()!=''"></div>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+                <div id="chooseUserDialog">
+                    <div id="searchuser">
+                        <form onsubmit="userListVm.searchSubmit(); return false;">
+                            <input type="text" id="searchtext" placeholder="用户姓名" />
+                            <button class="search"><span class="ico">S</span></button>
+                        </form>
+                    </div>
+                    <table id="userlist_expert" class="vtable">
+                        <tr>
+                            <td style="width:40px">选择</td>
+                            <td style="width:60px;">编号</td>
+                            <td style="width:120px;">姓名</td>
+                            <td style="width:120px;">手机</td>
+                            <td style="width:120px;">邮箱</td>
+                            <td>学校/公司</td>
+                            <td>擅长评审</td>
+                            <td>研究方向</td>
+                        </tr>
+                        <tr v-for="item in showUserList">
+                            <td><input name="checkuser" v-bind:userid="item.Id" v-bind:username="item.Name" type="checkbox" /></td>
+                            <td name="userid">{{item.Id}}</td>
+                            <td name="username">{{item.Name}}</td>
+                            <td name="username">{{item.CellPhone}}</td>
+                            <td name="username">{{item.Mail}}</td>
+                            <td><!--{{item.expert[0].SchoolName}}--></td>
+                            <td><!--{{item.expert[0].ReviewArea}}--></td>
+                            <td><!--{{item.expert[0].ResearchArea}}--></td>
+                        </tr>
+                    </table>
+                    <table id="userlist_operator" class="vtable">
+                        <tr>
+                            <td style="width:40px">选择</td>
+                            <td style="width:60px;">编号</td>
+                            <td>姓名</td>
+                        </tr>
+                        <tr v-for="item in showUserList" v-if="(item.Type&8)==8">
+                            <td><input name="checkuser" autocomplete="off" v-bind:userid="item.Id" v-bind:username="item.Name" type="checkbox" /></td>
+                            <td name="userid">{{item.Id}}</td>
+                            <td name="username">{{item.Name}}</td>
+                        </tr>
+                    </table>
+                    <div class="savecancel"><button id="addusers"><span>确定</span></button><button id="canceladd"><span>取消</span></button></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        var paperDetailVM = new Vue({
+            el: "#papercontent",
+            data: {
+                paper: null
+            },
+            methods: {
+                get: function () {
+                    var self = this;
+                    api.odata.getOne({
+                        SetName: "paper",
+                        Key: getParameterValue2("id"),
+                        LoadingId: "managecontentdetail",
+                        Uri: "?$expand=school,major,user,match,paper_review_expert($expand=user($select=Name,Id;$expand=paper_review_expert($select=Score))),paper_file_ref($expand=file)",
+                        Success: function (data) {
+                            self.paper = data;
+                            var arr = [];
+                            $.each(self.paper.paper_review_expert, function (x, y) {
+                                if (y.ExpertId != null) {
+                                    arr.push(y);
+                                }
+                            });
+                            self.paper.paper_review_expert = arr;
+                            $.each(self.paper.paper_review_expert, function (x, y) {
+                                return false;
+                                if (y.user.paper_review_expert.length > 0) {
+                                    var expScore = 0;
+                                    var expSocreCount = 0;
+                                    $.each(y.user.paper_review_expert, function (x1, y1) {
+                                        if (y1.Score > 0) {
+                                            expScore += y1.Score;
+                                            expSocreCount++;
+                                        }
+                                    });
+                                    if (expSocreCount > 1) {
+                                        expScore = Math.floor(expScore / expSocreCount);
+                                        y.Score = Math.floor(y.Score * 80 / expScore); // use average score 80 if score count > 1
+                                    }
+                                }
+                            });
+                            Vue.nextTick(function () {
+                                $("#adduseritem1").unbind();
+                                $("#adduseritem1").click(function () {
+                                    g.type = 1;
+                                    showAddUserDialog();
+                                });
+                                $("#adduseritem2").unbind();
+                                $("#adduseritem2").click(function () {
+                                    g.type = 2;
+                                    showAddUserDialog();
+                                });
+                                $("#adduseritem3").unbind();
+                                $("#adduseritem3").click(function () {
+                                    g.type = 3;
+                                    showAddUserDialog();
+                                });
+                                $("#papercontent span[name='removeuser']").unbind();
+                                $("#papercontent span[name='removeuser']").click(function () {
+                                    var rid = $(this).attr("rid");
+                                    deleteUserItem(rid);
+                                });
+                            });
+                        }
+                    });
+                },
+                getDateString: function (date) {
+                    return getDateString(date);
+                },
+                formatReviewTemplate: function (comment) {
+                    var items = {};
+                    if (comment == null) {
+                        return "";
+                    }
+                    if (comment.trim() != "") {
+                        items = JSON.parse(comment.trim());
+                    }
+
+                    var html =
+                        "<table class='vtable'>" +
+                            "<tr>" +
+                                "<td style='width:260px'>评分项目</td>" +
+                                "<td style='width:60px;'>满分值</td>" +
+                                "<td style='width:60px;'>实际分</td>" +
+                                "<td>评分注释</td>" +
+                            "</tr>";
+                    $.each(items.Options, function (index, value) {
+                        temp =
+                            "<tr>" +
+                                "<td><span>{0}</span></td>" +
+                                "<td><span>{1}分</span></td>" +
+                                "<td><span>{2}分</span></td>" +
+                                "<td><span>{3}</span></td>" +
+                            "</tr>";
+                        temp = temp.format(value.Description, value.TotalScore, value.GetScore, value.Comment, value.Id);
+                        html += temp;
+                    });
+                    return html;
+                },
+            }
+        });
+        paperDetailVM.get();
+        var userListVm = new Vue({
+            el: "#chooseUserDialog",
+            data: {
+                userList: null,
+                showUserList: [],
+            },
+            methods: {
+                get: function () {
+                    var self = this;
+                    api.odata.getList({
+                        SetName: "user",
+                        LoadingId: "chooseUserDialog",
+                        Uri: "?$expand=expert&$filter=Disabled eq 'N'",
+                        Success: function (data) {
+                            self.userList = data.value;
+                            self.showUserList = data.value;
+                        }
+                    });
+                },
+                searchSubmit: function () {
+                    var self = this;
+                    var searchText = $("#searchtext").val();
+                    self.showUserList = [];
+                    $.each(self.userList, function (x, y) {
+                        if (y.Name.indexOf(searchText) != -1) {
+                            self.showUserList.push(y);
+                        }
+                    });
+                }
+            }
+        });
+        userListVm.get();
+    </script>
+</body>
+</html>

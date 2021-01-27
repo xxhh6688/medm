@@ -1,0 +1,195 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>管理 专业列表</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <script src="content/js/toastr.js"></script>
+    <script src="content/js/jquery-3.1.1.min.js"></script>
+    <script src="content/js/medm.js?201805042108"></script>
+    <script src="content/js/vue.js"></script>
+    <script src="content/js/spinner.js"></script>
+    <script src="content/js/utility.js?201705231258"></script>
+    <script src="content/js/spell.js"></script>
+    <script src="content/js/ckeditor/ckeditor.js"></script>
+    <link rel="stylesheet" type="text/css" href="content/css/medm.css" />
+    <link rel="stylesheet" type="text/css" href="content/css/common.css" />
+    <style>
+        .page {
+            margin: 0;
+            width: 100%;
+        }
+
+        .func {
+            margin-left: 3px;
+            text-decoration: underline;
+            cursor: pointer;
+            color:#03c;
+        }
+    </style>
+    <script>
+        $(document).ready(function () {
+        });
+        function reg() {
+            $("#majorlist").find("span[class='func']").unbind();
+            $("#majorlist").find("span[name='addschool']").click(function () {
+                var schoolName = prompt("请输入学校名称");
+                if (schoolName != null) {
+                    var data = {};
+                    data.Name = schoolName;
+                    data.SpellWord = spell(name);
+                    api.odata.addOne({
+                        SetName: "school",
+                        Data: data,
+                        Success: function () {
+                            alert("操作成功");
+                            majorList.get();
+                        }
+                    });
+                }
+            });
+            $("#majorlist").find("span[name='modifyschool']").click(function () {
+                var schoolName = $(this).parent("div[class='schoolitem']").attr("schoolname");
+                var schoolId = $(this).parent("div[class='schoolitem']").attr("schoolid");
+                var name = prompt("请输入新的学校名称", schoolName);
+                if (name != null) {
+                    var data = {};
+                    data.Name = name;
+                    data.SpellWord = spell(name);
+                    api.odata.updateOne({
+                        SetName: "school",
+                        Data: data,
+                        Key: schoolId,
+                        Success: function () {
+                            alert("操作成功");
+                            majorList.get();
+                        }
+                    });
+                }
+            });
+            $("#majorlist").find("span[name='deleteschool']").click(function () {
+                if (confirm("确认删除该学校吗？") == false) {
+                    return;
+                }
+                var id = $(this).parent("div").attr("schoolid");
+                api.odata.DeleteOne({
+                    SetName: "school",
+                    Key: id,
+                    Success: function () {
+                        alert("操作成功");
+                        majorList.get();
+                    }
+                });
+            });
+            $("#majorlist").find("span[name='addmajor']").click(function () {
+                var schoolId = $(this).parents("td").attr("schoolid");
+                var majorName = prompt("请输入专业名称");
+                if (majorName != null) {
+                    var data = {};
+                    data.Name = majorName;
+                    data.SchoolId = schoolId;
+                    api.odata.addOne({
+                        SetName: "major",
+                        Data: data,
+                        Success: function () {
+                            alert("操作成功");
+                            majorList.get();
+                        }
+                    });
+                }
+            });
+            $("#majorlist").find("span[name='modifymajor']").click(function () {
+                var majorId = $(this).parents("div[class='majoritem']").attr("majorid");
+                var majorName = prompt("请输入新的专业名称");
+                if (majorName != null) {
+                    var data = {};
+                    data.Name = majorName;
+                    api.odata.updateOne({
+                        SetName: "major",
+                        Key: majorId,
+                        Data: data,
+                        Success: function () {
+                            alert("操作成功");
+                            majorList.get();
+                        }
+                    });
+                }
+            });
+            $("#majorlist").find("span[name='deletemajor']").click(function () {
+                if (confirm("确认删除该专业吗？") == false) {
+                    return;
+                }
+                var majorId = $(this).parents("div[class='majoritem']").attr("majorid");
+                api.odata.DeleteOne({
+                    SetName: "major",
+                    Key: majorId,
+                    Success: function () {
+                        alert("操作成功");
+                        majorList.get();
+                    }
+                });
+            });
+        }
+    </script>
+</head>
+<body>
+    <div id="header">
+        <script>
+            loadPage("header", "header");
+        </script>
+    </div>
+    <div id="body" class="page">
+        <div id="managenav"></div>
+        <script>
+            loadPage("managenav", "managenav", function () {
+                $("#managemajor ul").toggle();
+            });
+        </script>
+        <div id="managecontent">
+            <div id="pagetitle"><span>首页</span><span>管理</span><span>专业列表</span></div>
+            <div id="managecontentdetail">
+                <table class="vtable" id="majorlist">
+                    <tr>
+                        <td>学校<span name="addschool" class="func">[添加]</span></td>
+                        <td>专业</td>
+                    </tr>
+                    <tr v-for="item in majorList">
+                        <td><div v-bind:schoolid="item.Id" class="schoolitem" v-bind:schoolname="item.Name">{{item.Name}}<span name="modifyschool" class="func">[修改]</span><span name="deleteschool" class="func">[删除]</span></div></td>
+                        <td v-bind:schoolid="item.Id">
+                            <div v-bind:majorid="m.Id" class="majoritem" v-for="m in item.major">
+                                {{m.Name}}<span name="modifymajor" class="func">[修改]</span><span name="deletemajor" class="func">[删除]</span>
+                            </div>
+                            <div><span name="addmajor" class="func">[添加]</span></div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script>
+        var majorList = new Vue({
+            el: "#majorlist",
+            data: {
+                majorList: null
+            },
+            methods: {
+                get: function () {
+                    var self = this;
+                    api.odata.getList({
+                        SetName: "school",
+                        Uri: "?$expand=major&$orderby=SpellWord",
+                        LoadingId: "managecontentdetail",
+                        Success: function (data) {
+                            self.majorList = data.value;
+                            Vue.nextTick(function () {
+                                reg();
+                            });
+                        }
+                    });
+                }
+            }
+        });
+        majorList.get();
+    </script>
+</body>
+</html>

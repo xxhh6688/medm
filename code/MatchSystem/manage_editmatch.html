@@ -1,0 +1,522 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>管理 编辑比赛</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <script src="content/js/toastr.js"></script>
+    <script src="content/js/jquery-3.1.1.min.js"></script>
+    <script src="content/js/medm.js?201805042108"></script>
+    <script src="content/js/vue.js"></script>
+    <script src="content/js/spinner.js"></script>
+    <script src="content/js/uploadfile.js"></script>
+    <script src="content/js/utility.js?201705231258"></script>
+    <script src="content/js/ckeditor/ckeditor.js"></script>
+    <link rel="stylesheet" type="text/css" href="content/css/medm.css" />
+    <link rel="stylesheet" type="text/css" href="content/css/common.css" />
+    <style>
+        .page {
+            margin: 0;
+            width: 100%;
+        }
+
+        #matchdetail input {
+            width: 100%;
+            border: 0;
+            padding-left: 5px;
+            height: 30px;
+            line-height: 30px;
+            font-size: 16px;
+        }
+
+        #matchdetail select {
+            width: 100%;
+            border: 0;
+            padding-left: 5px;
+            height: 30px;
+            line-height: 30px;
+            font-size: 18px;
+        }
+
+        .hinttext {
+            font-size: 14px;
+            color: #aca8a8;
+            font-style: italic;
+        }
+
+        #choosequestiondialog {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background-color: #ffffff;
+            padding: 18px;
+            display: none;
+        }
+
+        #questionlistcontainer {
+            position: absolute;
+            top: 30px;
+            left: 10px;
+            right: 10px;
+            bottom: 60px;
+            overflow: auto;
+        }
+
+        #choosequestionsavecancel {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 60px;
+            text-align: right;
+            padding-right: 18px;
+            padding-top:18px;
+        }
+
+        #questionlist {
+            width: 2400px;
+        }
+
+        #questionlist td{
+            vertical-align:top;
+        }
+        #questionlist tr:nth-child(odd){
+            background-color:#f4f4f4;
+        }
+
+        .questionitem {
+            position: relative;
+        }
+
+            .questionitem span[name='deletequestion'] {
+                position: absolute;
+                top: 3px;
+                right: 3px;
+                cursor: pointer;
+            }
+
+        .fileitem {
+            position: relative;
+        }
+
+            .fileitem span[name='deletefile'] {
+                position: absolute;
+                top: 3px;
+                right: 3px;
+                cursor: pointer;
+            }
+            .longtextbrowser{
+                max-height:130px;
+                overflow-y:auto;
+            }
+    </style>
+    <script>
+        $(document).ready(function () {
+        });
+        function reg() {
+            initCKEditor('matchdescription');
+            initCKEditor('matchaward');
+            $("#addattachment").click(function () {
+                $("#fileToUpload").trigger("click");
+            });
+            $("#updatematch").click(function () {
+                updateMatch();
+            });
+            $("#cancelupdatematch").click(function () {
+                window.history.back();
+            });
+            $("#cancelchoosequestion").click(function () {
+                $("#choosequestiondialog").hide();
+            });
+            $("#choosequestion").click(function () {
+                $("#choosequestiondialog input[type='checkbox']").prop("checked", false);
+                $("#choosequestiondialog").show();
+            });
+            $("#savechoosequestion").click(function () {
+                $("#choosequestiondialog input[type='checkbox']").each(function (index, value) {
+                    if ($(this).prop("checked")) {
+                        var id = $(this).attr("questionid");
+                        var name = $(this).attr("questionname");
+                        var sn = $(this).attr("sn");
+                        var html = "<div status='new' class='questionitem' questionid='{0}'>【{2}】{1}<span name='deletequestion' class='ico'>I</span></div>";
+                        html = html.format(id, name, sn);
+                        var needAppend = true;
+                        $("#questionitemlist div[class='questionitem']").each(function (index2, value2) {
+                            var qId = $(value2).attr("questionid");
+                            if (qId == id) {
+                                needAppend = false;
+                                return false;
+                            }
+                        });
+                        if (needAppend) {
+                            $("#questionitemlist").append(html);
+                            $("#questionitemlist div[class='questionitem']:last-child").find("span[name='deletequestion']").click(function () {
+                                $(this).parents("div[class='questionitem']").remove();
+                            });
+                        }
+                    }
+                });
+                $("#choosequestiondialog").hide();
+            });
+
+            $("#questionitemlist div[class='questionitem']").find("span[name='deletequestion']").click(function () {
+                var rID = parseInt($(this).parent("div[class='questionitem']").attr("rid"));
+                api.odata.DeleteOne({
+                    SetName: "match_question_ref",
+                    Key: rID,
+                    Success: function () {
+                        $("#questionitemlist div[rid='{0}']".format(rID)).remove();
+                    }
+                });
+
+            });
+
+            $("#attachmentlist div[class='fileitem']").find("span[name='deletefile']").click(function () {
+                var rID = parseInt($(this).parent("div[class='fileitem']").attr("rid"));
+                api.odata.DeleteOne({
+                    SetName: "match_file_ref",
+                    Key: rID,
+                    Success: function () {
+                        $("#attachmentlist div[rid='{0}']".format(rID)).remove();
+                    }
+                });
+
+            });
+        }
+        function updateMatch() {
+            var title = $("#title").val();
+            var description = CKEDITOR.instances['matchdescription'].getData();
+            var type = $("#type").val();
+            if (testDateFormat($("#time1").val().trim()) == false) {
+                alert("大赛日期不合法，请检查");
+                return;
+            }
+            if (testDateFormat($("#time2").val().trim()) == false) {
+                alert("提交论文日期不合法，请检查");
+                return;
+            }
+            if (testDateFormat($("#time3").val().trim()) == false) {
+                alert("形审日期不合法，请检查");
+                return;
+            }
+            if (testDateFormat($("#time4").val().trim()) == false) {
+                alert("函评日期不合法，请检查");
+                return;
+            }
+            if (testDateFormat($("#time5").val().trim()) == false) {
+                alert("会评日期不合法，请检查");
+                return;
+            }
+            var StartTime = $("#time1").val().trim().split("#")[0];
+            var EndTime = $("#time1").val().trim().split("#")[1];
+            var RegisterStartTime = $("#time2").val().trim().split("#")[0];
+            var RegisterEndTime = $("#time2").val().trim().split("#")[1];
+            var ReviewStartTime = $("#time3").val().trim().split("#")[0];
+            var ReviewEndTime = $("#time3").val().trim().split("#")[1];
+            var Review1StartTime = $("#time4").val().trim().split("#")[0];
+            var Review1EndTime = $("#time4").val().trim().split("#")[1];
+            var Review2StartTime = $("#time5").val().trim().split("#")[0];
+            var Review2EndTime = $("#time5").val().trim().split("#")[1];
+            var createBy = currentUserVM.userInfo.Id;
+            var CreateTime = new Date(getCurrentUTCDate());
+            var UpdateTime = new Date(getCurrentUTCDate());
+            var Award = CKEDITOR.instances['matchaward'].getData();
+            var data = {};
+            data.Title = title;
+            data.Type = type;
+            data.Description = description;
+            data.StartTime = StartTime;
+            data.EndTime = EndTime;
+            data.RegisterStartTime = RegisterStartTime;
+            data.RegisterEndTime = RegisterEndTime;
+            data.ReviewStartTime = ReviewStartTime;
+            data.ReviewEndTime = ReviewEndTime;
+            data.Review1StartTime = Review1StartTime;
+            data.Review1EndTime = Review1EndTime;
+            data.Review2StartTime = Review2StartTime;
+            data.Review2EndTime = Review2EndTime;
+            data.CreateBy = createBy;
+            data.CreateTime = CreateTime;
+            data.UpdateTime = UpdateTime;
+            data.Award = Award;
+            api.odata.updateOne({
+                SetName: "match",
+                Key:getParameterValue2("id"),
+                Data: data,
+                Success: function () {
+                    $.each($("#questionitemlist div[class='questionitem'][status='new']"), function (index, value) {
+                        var qId = $(value).attr("questionid");
+                        var mqData = {};
+                        mqData.MatchId = parseInt(getParameterValue2("id"));
+                        mqData.QuestionId = parseInt(qId);
+                        api.odata.addOne({
+                            SetName: "match_question_ref",
+                            Data: mqData,
+                            Success: function () { }
+                        });
+                    });
+                    $.each($("#attachmentlist div[class='fileitem'][status='new']"), function (index, value) {
+                        var fileId = $(value).attr("fileId");
+                        var mfData = {};
+                        mfData.MatchId = parseInt(getParameterValue2("id"));
+                        mfData.FileId = parseInt(fileId);
+                        api.odata.addOne({
+                            SetName: "match_file_ref",
+                            Data: mfData,
+                            Success: function () { }
+                        });
+                    });
+                    alert("提交成功！");
+                }
+            });
+        }
+        function fileSelected() {
+            var file = document.getElementById('fileToUpload').files[0];
+            if (file) {
+                var fileSize = 0;
+                if (file.size > 1024 * 1024)
+                    fileSize = (Math.round(file.size * 100 / (1024 * 1024)) / 100).toString() + 'MB';
+                else
+                    fileSize = (Math.round(file.size * 100 / 1024) / 100).toString() + 'KB';
+                startUpload(file.name);
+            }
+        }
+        function startUpload(name) {
+            var uploader = UPLOADFACTORY.create();
+            uploader.fileName = name;
+            uploader.formData.append("fileToUpload", document.getElementById('fileToUpload').files[0]);
+            uploader.uploadURL = "/api/Files/UploadFiles";
+            uploader.onUploadProgressCallbackFunction = function (token, percent) {
+                var html = "<div class=\"fileitem\" status=\"new\" token=\"{2}\"><span name=\"name\">{0}</span><span name=\"percent\">{1}</span></div>".format(name, percent, token);
+                var containerId = "attachmentlist";
+
+                if ($("#" + containerId).find("div[token={0}]".format(token)).length == 0) {
+                    $("#" + containerId).append(html);
+                }
+
+                $("#" + containerId).find("div[token={0}]".format(token)).find("span[name='percent']").text("上传进度:" + percent + "%");
+            };
+            uploader.onUploadCompleteCallbackFunction = function (fileObj, token) {
+                $("#attachmentlist").find("div[token={0}]".format(token)).find("span[name='percent']").text("上传完毕");
+                $("#attachmentlist").find("div[token={0}]".format(token)).attr("fileId", fileObj[0].Id);
+                $("#attachmentlist").find("div[token={0}]".format(token)).attr("realToken", fileObj[0].Token);
+                var deleteHtml = "<span class=\"ico\" name=\"deletefile\">I</span>";
+                $("#attachmentlist").find("div[token={0}]".format(token)).append(deleteHtml);
+                $("#attachmentlist").find("div[token={0}]".format(token)).find("span[name='deletefile']").click(function () {
+                    $("#attachmentlist").find("div[token={0}]".format(token)).remove();
+                });
+            };
+            uploader.uploadFile();
+        }
+        function testDateFormat(date) {
+            var pattern = /\d{4}-\d{2}-\d{2}#\d{4}-\d{2}-\d{2}/g;
+            if (pattern.test(date)) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="header">
+        <script>
+            loadPage("header", "header");
+        </script>
+    </div>
+    <div id="body" class="page">
+        <div id="managenav"></div>
+        <script>
+            loadPage("managenav", "managenav");
+        </script>
+        <div id="managecontent">
+            <div id="pagetitle"><span>首页</span><span>管理</span><span>编辑大赛</span></div>
+            <div id="managecontentdetail" class="loadpane">
+                <table id="matchdetail" class="htable" v-if="match!=null">
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>大赛标题</td>
+                        <td>
+                            <input type="text" id="title" v-model="match.Title" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>大赛类型</td>
+                        <td>
+                            <select id="type" v-model="match.Type">
+                                <option value="1">论文</option>
+                                <option value="2">设计</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>大赛时间</td>
+                        <td>
+                            <div><span class="hinttext">格式为2017-04-10#2017-04-20</span></div>
+                            <div><input type="text" id="time1" v-bind:value="getDateString(match.StartTime)+'#'+getDateString(match.EndTime)" /></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>提交论文设计</td>
+                        <td>
+                            <div><span class="hinttext">格式为2017-04-10#2017-04-20</span></div>
+                            <div><input type="text" id="time2" v-bind:value="getDateString(match.RegisterStartTime)+'#'+getDateString(match.RegisterEndTime)" /></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>形审阶段</td>
+                        <td>
+                            <div><span class="hinttext">格式为2017-04-10#2017-04-20</span></div>
+                            <div><input type="text" id="time3" v-bind:value="getDateString(match.ReviewStartTime)+'#'+getDateString(match.ReviewEndTime)" /></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>函评阶段</td>
+                        <td>
+                            <div><span class="hinttext">格式为2017-04-10#2017-04-20</span></div>
+                            <div><input type="text" id="time4" v-bind:value="getDateString(match.Review1StartTime)+'#'+getDateString(match.Review1EndTime)" /></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>会评阶段</td>
+                        <td>
+                            <div><span class="hinttext">格式为2017-04-10#2017-04-20</span></div>
+                            <div><input type="text" id="time5" v-bind:value="getDateString(match.Review2StartTime)+'#'+getDateString(match.Review2EndTime)" /></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>题目</td>
+                        <td>
+                            <div id="questionitemlist" style="height:300px;overflow:auto;">
+                                <div v-bind:rid="item.Id" status="old" v-bind:questionid="item.question.Id" class="questionitem" v-for="item in match.match_question_ref">【{{item.question.SerialNumber}}】{{item.question.Name}}<span name='deletequestion' class='ico'>I</span></div>
+                            </div>
+                            <div><button id="choosequestion"><span>选择题目</span></button></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>大赛介绍</td>
+                        <td>
+                            <textarea id="matchdescription">{{match.Description}}</textarea>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>奖项设置</td>
+                        <td><textarea id="matchaward">{{match.Award}}</textarea></td>
+                    </tr>
+                    <tr>
+                        <td>大赛附件</td>
+                        <td>
+                            <div id="attachmentlist">
+                                <div v-for="item in match.match_file_ref" class="fileitem" v-bind:fileId="item.file.Id" v-bind:rid="item.Id"><a v-bind:href="'/api/Files/DownloadFile?fileToken='+item.file.Token">{{item.file.Name}}</a><span class="ico" name="deletefile">I</span></div>
+                            </div>
+                            <div><button id="addattachment"><span>添加附件</span></button></div>
+                        </td>
+                    </tr>
+                </table>
+                <div class="savecancel">
+                    <button id="updatematch"><span>提交</span></button><button id="cancelupdatematch"><span>取消</span></button>
+                </div>
+                <div style="display:none;">
+                    <form id="uploadform" enctype="multipart/form-data" method="post" action="">
+                        <input type="file" class="" name="fileToUpload" id="fileToUpload" onchange="fileSelected();" />
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="choosequestiondialog">
+        <div id="questionlistcontainer">
+            <table class="vtable loadpane" id="questionlist">
+                <tr>
+                    <td style="width:40px;">选择</td>
+                    <td style="width:40px;">序号</td>
+                    <td style="width:100px">编号</td>
+                    <td style="width:300px;">标题</td>
+                    <td style="width:80px;">类型</td>
+                    <td style="width:150px;">所属专业</td>
+                    <td style="width:150px;">提出单位</td>
+                    <td style="width:150px;">来源企业</td>
+                    <td style="width:400px">题目简介</td>
+                    <td style="width:400px">毕设要求</td>
+                </tr>
+                <tr v-for="item in questionList">
+                    <td>
+                        <input type="checkbox" name="checkquestion" v-bind:questionid="item.Id" v-bind:questionname="item.Name" v-bind:sn="item.SerialNumber" />
+                    </td>
+                    <td name="index"></td>
+                    <td>{{item.SerialNumber}}</td>
+                    <td>{{item.Name}}</td>
+                    <td>{{translate(item.Type)}}</td>
+                    <td>{{item.Industry}}</td>
+                    <td>{{item.Support}}</td>
+                    <td>{{item.FromCompany}}</td>
+                    <td><div class="longtextbrowser">{{item.Description}}</div></td>
+                    <td><div class="longtextbrowser">{{item.DesignRequirement}}</div></td>
+                </tr>
+            </table>
+        </div>
+        <div id="choosequestionsavecancel" class="savecancel">
+            <button id="savechoosequestion"><span>确定</span></button><button id="cancelchoosequestion"><span></span>取消</button>
+        </div>
+    </div>
+    <script>
+        var matchVM = new Vue({
+            el: "#matchdetail",
+            data: {
+                match: null
+            },
+            methods: {
+                get: function () {
+                    var self = this;
+                    api.odata.getOne({
+                        SetName: "match",
+                        Key: getParameterValue2("id"),
+                        Uri: "?$expand=match_question_ref($expand=question($select=Id,Name,SerialNumber)),match_file_ref($expand=file)",
+                        LoadingId: "managecontentdetail",
+                        Success: function (data) {
+                            self.match = data;
+                            Vue.nextTick(function () {
+                                reg();
+                            });
+                        }
+                    });
+                },
+                getDateString: function (date) {
+                    return getDateString(date);
+                },
+            }
+        });
+        var questionListVM = new Vue({
+            el: "#questionlist",
+            data: {
+                questionList: null
+            },
+            methods: {
+                get: function () {
+                    var self = this;
+                    api.odata.getList({
+                        SetName: "question",
+                        Uri: "?$select=Id,Name,SerialNumber",
+                        LoadingId: "questionlist",
+                        Success: function (data) {
+                            self.questionList = data.value;
+                        }
+                    });
+                },
+                translate: function (type) {
+                    if (type == 1) {
+                        return "定向题目";
+                    }
+                    else if (type == 2) {
+                        return "开放题目";
+                    }
+                }
+            }
+        });
+        matchVM.get();
+        questionListVM.get();
+    </script>
+</body>
+</html>

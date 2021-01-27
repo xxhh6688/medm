@@ -1,0 +1,225 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>机械工程师设计大赛首页</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <script src="content/js/jquery-3.1.1.min.js"></script>
+    <script src="content/js/toastr.js"></script>
+    <script src="content/js/medm.js?201805042108"></script>
+    <script src="content/js/utility.js?201705231258"></script>
+    <script src="content/js/spinner.js"></script>
+    <script src="content/js/vue.js"></script>
+    <link rel="stylesheet" type="text/css" href="content/css/medm.css?201705041628" />
+    <link rel="stylesheet" type="text/css" href="content/css/common.css" />
+    <link rel="stylesheet" type="text/css" href="content/css/toastr.css" />
+    <style>
+        .labeloption {
+            position: absolute;
+            top: 14px;
+            right: 11px;
+        }
+
+            .labeloption span {
+                font-size: 12px;
+                color: #cccccc;
+            }
+
+        @keyframes banneranimate {
+            0% {
+                transform: rotateX(10.89796deg) rotateY(-15.96215deg);
+            }
+
+            50% {
+                transform: rotateX(10.89796deg) rotateY(15.96215deg);
+            }
+
+            100% {
+                transform: rotateX(10.89796deg) rotateY(-15.96215deg);
+            }
+        }
+    </style>
+    <script>
+        $(document).ready(function () {
+            delayCheckUserLogin();
+        });
+        function delayCheckUserLogin() {
+            if (typeof (currentUserVM) != "undefined" && typeof (currentUserVM.userInfo.Id) != "undefined") {
+                $("#loginsystem").hide();
+                $("#loginsystem2").hide();
+                if ((currentUserVM.userInfo.Type & 4) == 4) {
+                    $("#submitpaper").show();
+                }
+                if ((currentUserVM.userInfo.Type & 1) == 1 || (currentUserVM.userInfo.Type & 2) == 2 || (currentUserVM.userInfo.Type & 8) == 8 || (currentUserVM.userInfo.Type & 32) == 32) {
+                    $("#reviewpaper").show();
+                }
+                return;
+            }
+            setTimeout(function () {
+                delayCheckUserLogin();
+            }, 200);
+        }
+    </script>
+</head>
+<body>
+    <div id="header">
+        <script>
+            loadPage("header", "header");
+        </script>
+    </div>
+    <div id="body" class="page">
+        <div id="indexbanner">
+            <div style="position:absolute;top: 81px;left: 114px;z-index:101;"><span style="font-size: 37px;color:#ffffff;">中国机械行业卓越工程师教育联盟</span></div>
+            <div style="position:absolute;top:158px;left:114px;">
+                <div id="loginsystem" style="border:1px solid #ffffff;padding:10px;text-align:center;float:left;margin-right:18px;cursor:pointer;" onclick="window.location.href='login.html'"><span class="ico" style="color:#ffffff;display:block;font-size:45px;">&#57936;</span><span style="font-size: 16px;color:#ffffff;">申请人登陆</span></div>
+                <div id="loginsystem2" style="border:1px solid #ffffff;padding:10px;text-align:center;float:left;margin-right:18px;cursor:pointer;" onclick="window.location.href='login.html'"><span class="ico" style="color:#ffffff;display:block;font-size:45px;">&#57376;</span><span style="font-size: 16px;color:#ffffff;">专家登陆</span></div>
+                <div id="submitpaper" style="display:none;border:1px solid #ffffff;padding:10px;text-align:center;float:left;margin-right:18px;cursor:pointer;"><span class="ico" style="color:#ffffff;display:block;font-size:45px;">&#57368;</span><span style="font-size: 16px;color:#ffffff;">提交参赛作品</span></div>
+                <div id="reviewpaper" style="display:none;border:1px solid #ffffff;padding:10px;text-align:center;float:left;margin-right:18px;cursor:pointer;" onclick="window.location.href='myreviewlist.html'"><span class="ico" style="color:#ffffff;display:block;font-size:45px;">&#57368;</span><span style="font-size: 16px;color:#ffffff;">审阅参赛作品</span></div>
+            </div>
+            <div style="animation:banneranimate 20s;animation-iteration-count: 1000;transform: rotateX(2.89796deg) rotateY(-4.96215deg);position:relative;transform-style: preserve-3d;-webkit-transition: all .5s ease-out;transition: all .5s ease-out;">
+                <div><img src="/content/image/banner_6.png" style="width: 261px;height: 133px;transform: translateZ(150px);position:absolute;top: 84px;right: 181px;opacity: 0.9;z-index: 99;"></div>
+                <div><img src="/content/image/banner_2.png" style="width: 600px;height: 500px;transform: translateZ(80px);position:absolute;top: -28px;right: -2px;opacity: 0.7;z-index: 99;"></div>
+                <div><img src="/content/image/banner_4.png" style="width: 300px;height: 300px;transform: translateZ(50px);position:absolute;top: 147px;right: 148px;opacity: 0.8;z-index: 99;"></div>
+            </div>
+        </div>
+        <div id="articlegrid">
+            <div class="COLROW">
+                <div id="news" class="COL4 loadpane">
+                    <div class="label">新闻</div>
+                    <div class="labeloption"><a href="articlelist.html?t=1"><span>more</span></a></div>
+                    <div v-for="item in list" class="articleitem">
+                        <div class="title ellipsis"><a v-bind:href="'article.html?id=' + item.Id"><span>{{item.Title}}</span></a></div>
+                        <div class="date"><span>{{getDateString(item.CreateTime)}}</span></div>
+                    </div>
+                </div>
+                <div id="notice" class="COL4 loadpane">
+                    <div class="label">通知</div>
+                    <div class="labeloption"><a href="articlelist.html?t=2"><span>more</span></a></div>
+                    <div v-for="item in list" class="articleitem">
+                        <div class="title ellipsis"><a v-bind:href="'article.html?id=' + item.Id"><span>{{item.Title}}</span></a></div>
+                        <div class="date"><span>{{getDateString(item.CreateTime)}}</span></div>
+                    </div>
+                </div>
+                <div id="match" class="COL4 loadpane">
+                    <div class="label">观点</div>
+                    <div class="labeloption"><a href="articlelist.html?t=3"><span>more</span></a></div>
+                    <div v-for="item in list" class="articleitem">
+                        <div class="title ellipsis"><a v-bind:href="'article.html?id=' + item.Id"><span>{{item.Title}}</span></a></div>
+                        <div class="date"><span>{{getDateString(item.CreateTime)}}</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="matchsteps">
+            <div class="COLROW">
+                <div class="matchstep COL3 loadpane" id="submitpaper2" onclick="matchInfo.goSubmitPaper();">
+                    <div class="image step1"></div>
+                    <div class="text">提交参赛作品</div>
+                    <div class="icon"><span class="ico">&#57858;</span></div>
+                </div>
+                <div class="matchstep COL3" onclick="window.location.href='myreviewlist.html'">
+                    <div class="image step2"></div>
+                    <div class="text">形式审查</div>
+                    <div class="icon"><span class="ico">&#57858;</span></div>
+                </div>
+                <div class="matchstep COL3" onclick="window.location.href='myreviewlist.html'">
+                    <div class="image step3"></div>
+                    <div class="text">专家评价</div>
+                    <div class="icon"><span class="ico">&#57858;</span></div>
+                </div>
+                <div class="matchstep COL3">
+                    <div class="image step4"></div>
+                    <div class="text">优秀设计</div>
+                    <div class="icon"><span class="ico">&#57858;</span></div>
+                </div>
+            </div>
+            <div class="cb"></div>
+        </div>
+    </div>
+    <div id="footer"></div>
+    <script>
+        loadPage("footer", "footer");
+    </script>
+    <script>
+        var articles = function (id, type) {
+            this.el = '#' + id;
+            this.data = {
+                list: [],
+            };
+            this.methods = {
+                init: function () {
+                    var self = this;
+                    var top = 6;
+                    var skip = 0;
+                    api.odata.getList({
+                        LoadingId: id,
+                        SetName: 'article',
+                        Uri: '?$top={0}&$skip={1}&$filter=Type eq {2}&$orderby=Id desc'.format(top, skip, type),
+                        Success: function (data) {
+                            self.list = data.value;
+                        },
+                        Failed: function (data) {
+                            alert("操作失败！{0}".format(data));
+                        },
+                    });
+                },
+                getDateString: function (date) {
+                    return getDateString(date);
+                },
+            }
+        }
+        var news = new Vue(new articles('news', 1));
+        var notice = new Vue(new articles('notice', 2));
+        var match = new Vue(new articles('match', 3));
+        var matchInfo = new Vue({
+            el: "#matchsteps",
+            data: {
+                match: null
+            },
+            methods: {
+                getLastMatch: function () {
+                    var self = this;
+                    api.odata.getList({
+                        LoadingId: "submitpaper2",
+                        SetName: 'match',
+                        Uri: '?$orderby=Id desc',
+                        Success: function (data) {
+                            if (data.value.length > 0) {
+                                self.match = data.value[0];
+                            }
+                            Vue.nextTick(function () {
+                                if (self.match != null) {
+                                    $("#submitpaper2").click(function () {
+                                        window.location.href = 'submitpaper.html?matchid=' + self.match.Id;
+                                    });
+                                    $("#submitpaper").click(function () {
+                                        window.location.href = 'submitpaper.html?matchid=' + self.match.Id;
+                                    });
+                                }
+                                else {
+                                    $("#matchsteps .step1").click(function () {
+                                        window.location.href = 'matchlist.html';
+                                    });
+                                }
+                            });
+                        }
+                    });
+                },
+                goSubmitPaper: function () {
+                    var self = this;
+                    if (self.match == null) {
+                        alert("正在获取大赛配置信息，请稍后...");
+                    }
+                },
+            }
+        });
+
+        $(document).ready(function () {
+            news.init();
+            notice.init();
+            match.init();
+            matchInfo.getLastMatch();
+        });
+    </script>
+</body>
+</html>

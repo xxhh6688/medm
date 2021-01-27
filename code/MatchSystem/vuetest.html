@@ -1,0 +1,30 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>vue test page</title>
+    <script src="content/js/vue.js"></script>
+    <script src="content/js/jquery-3.1.1.min.js"></script>
+    <meta charset="utf-8" />
+    <script>
+        var app = null;
+        $(document).ready(function () {
+            app = new Vue({
+                el: '#app',
+                data: {
+                    items: [
+                        {name:'xu'},
+                        {name:'zhang'}, 
+                        {name:'wang'}
+                    ],
+                    s:true
+                }
+            })
+        });
+    </script>
+</head>
+<body>
+    <div id="app" v-if="s" >
+        <div v-for="item in items" v-bind:name="item.name">{{item.name}}</div>
+    </div>
+</body>
+</html>

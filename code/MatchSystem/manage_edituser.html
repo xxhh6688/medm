@@ -1,0 +1,451 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>管理 编辑用户</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <script src="content/js/toastr.js"></script>
+    <script src="content/js/jquery-3.1.1.min.js"></script>
+    <script src="content/js/medm.js?201805042108"></script>
+    <script src="content/js/utility.js?201705231258"></script>
+    <script src="content/js/ckeditor/ckeditor.js"></script>
+    <script src="content/js/vue.js"></script>
+    <script src="content/js/spinner.js"></script>
+    <link rel="stylesheet" type="text/css" href="content/css/medm.css" />
+    <link rel="stylesheet" type="text/css" href="content/css/common.css" />
+    <style>
+        .page {
+            margin: 0;
+            width: 100%;
+        }
+        #userinfo input[type='text']{
+            width:100%;
+            box-sizing:border-box;
+            padding-left:5px;
+            height:30px;
+            line-height:30px;
+            font-size:18px;
+            border:0;
+        }
+        #userinfo select{
+            width:100%;
+            box-sizing:border-box;
+            padding-left:5px;
+            height:30px;
+            line-height:30px;
+            font-size:18px;
+            border:0;
+        }
+    </style>
+    <script>
+        $(document).ready(function () {
+            userInfoVM.init();
+        });
+    </script>
+</head>
+<body>
+    <div id="header">
+        <script>
+            loadPage("header", "header");
+        </script>
+    </div>
+    <div id="body" class="page">
+        <div id="managenav"></div>
+        <script>
+            loadPage("managenav", "managenav", function () {
+                $("#manageuser ul").toggle();
+            });
+        </script>
+        <div id="managecontent">
+            <div id="pagetitle"><span>首页</span><span>管理</span><span>编辑用户</span></div>
+            <div id="managecontentdetail">
+                <table class="htable" id="userinfo">
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>用户名</td>
+                        <td><input type="text" v-model="user.Name" /></td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>停用账户</td>
+                        <td><input type="checkbox" v-model="user.Disabled" /></td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>用户类型</td>
+                        <td>
+                            <label for="t1">函评专家</label><input name="usertype" id="t1" v-on:click="typeChange('t1')" type="checkbox" value="1" />
+                            <label for="t2">会评专家</label><input name="usertype" id="t2" v-on:click="typeChange('t2')" type="checkbox" value="2" />
+                            <label for="t4">专业联系人</label><input name="usertype" id="t4" v-on:click="typeChange('t4')" type="checkbox" value="4" />
+                            <label for="t8">操作管理员</label><input name="usertype" id="t8" v-on:click="typeChange('t8')" type="checkbox" value="8" />
+                            <label for="t16">系统管理员</label><input name="usertype" id="t16" v-on:click="typeChange('t16')" type="checkbox" value="16" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>手机号码</td>
+                        <td><input type="text" v-model="user.CellPhone" /></td>
+                    </tr>
+                    <tr>
+                        <td><span class="ico required">&#57888;</span>邮箱</td>
+                        <td><input type="text" v-model="user.Mail" /></td>
+                    </tr>
+                    <tr v-if="contact!=null">
+                        <td>学校</td>
+                        <td id="school">
+                            <select v-model="contact.SchoolId" id="schoollist" v-on:change="schoolChange();">
+                                <option v-for="school in schools" v-bind:value="school.Id">{{school.Name}}</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr v-if="contact!=null">
+                        <td>专业</td>
+                        <td id="major">
+                            <select v-model="contact.MajorId" id="majorlist">
+                                <option v-for="major in majors" v-bind:value="major.Id">{{major.Name}}</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr v-if="contact!=null">
+                        <td>职务/职称</td>
+                        <td><input type="text" v-model="contact.Job" /></td>
+                    </tr>
+                    <tr v-if="expert!=null">
+                        <td>性别</td>
+                        <td>
+                            <select v-model="expert.Gender">
+                                <option value='F'>女</option>
+                                <option value='M'>男</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr v-if="expert!=null">
+                        <td>学校/公司</td>
+                        <td><input type="text" v-model="expert.Company" /></td>
+                    </tr>
+                    <tr v-if="expert!=null">
+                        <td>研究方向</td>
+                        <td><input type="text" v-model="expert.ResearchArea" /></td>
+                    </tr>
+                    <tr v-if="expert!=null">
+                        <td>擅长评审领域</td>
+                        <td><input type="text" v-model="expert.ReviewArea" /></td>
+                    </tr>
+                </table>
+                <div class="savecancel">
+                <button title="密码重置为手机号码后六位" v-on:click="resetPassword()"><span>重置密码</span></button>
+                <button v-on:click="deleteUser()"><span>删除</span></button>
+                <button v-on:click="save()"><span>保存</span></button>
+                <button onclick="window.history.back();"><span>取消</span></button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        var userInfoVM = new Vue({
+            el: "#managecontent",
+            data: {
+                user: {},
+                expert: null,
+                contact: null,
+                majors: [],
+                schools: []
+            },
+            methods: {
+                init: function () {
+                    var uid = getParameterValue2("id");
+                    var self = this;
+                    api.odata.getList({
+                        LoadingId: "school",
+                        SetName: 'school',
+                        Uri: '',
+                        Data: '',
+                        Success: function (data) {
+                            self.schools = data.value;
+                            api.odata.getOne({
+                                LoadingId: "managecontent",
+                                SetName: 'user',
+                                Key: uid,
+                                Data: '',
+                                Uri: '?$expand=expert,majorcontact',
+                                Success: function (data) {
+                                    self.user = data;
+                                    if (self.user.Disabled == "Y") {
+                                        self.user.Disabled = true;
+                                    }
+                                    else {
+                                        self.user.Disabled = false;
+                                    }
+                                    if (data.expert.length > 0) {
+                                        self.expert = data.expert[0];
+                                    }
+                                    if (data.majorcontact.length > 0) {
+                                        self.contact = data.majorcontact[0];
+                                    }
+                                    // set type
+                                    $.each($("input[name='usertype']"), function (index, elem) {
+                                        if ((data.Type & $(elem).val()) != 0) {
+                                            $(elem).prop('checked', true);
+                                        }
+                                    });
+                                    Vue.nextTick(function () {
+                                        $("#schoollist").change(function () {
+
+                                        });
+                                    });
+
+                                    self.schoolChange();
+                                },
+                                Failed: function (data) {
+                                    alert("操作失败！{0}".format(data));
+                                },
+                            });
+                        },
+                        Failed: function (data) {
+                            alert("操作失败！{0}".format(data));
+                        },
+                    });
+                },
+                schoolChange: function () {
+                    var self = this;
+                    if (this.contact == null) {
+                        return;
+                    }
+                    var schoolId = this.contact.SchoolId;
+                    api.odata.getList({
+                        LoadingId: "major",
+                        SetName: "major",
+                        Uri: "?$filter=SchoolId eq {0}".format(schoolId),
+                        Success: function (data) {
+                            self.majors = data.value;
+                        }
+                    });
+                },
+                typeChange: function (id) {
+                    var self = this;
+                    var t = $('#' + id).val();
+                    if (t < 4) {
+                        if ($('#' + id).is(':checked') && (self.expert == null)) {
+                            if (self.user.expert.length == 0) {
+                                self.expert = {
+                                    UserId: self.user.Id,
+                                    Gender: 'M',
+                                    SchoolName: '',
+                                    ResearchArea: '',
+                                    ReviewArea: ''
+                                }
+                            } else {
+                                self.expert = self.user.expert[0];
+                            }
+                        }
+                        else if (!$('#t1').is(':checked') && !$('#t2').is(':checked') && (self.expert != null)) {
+                            self.expert = null;
+                        }
+                    }
+                    if (t == 4) {
+                        if ($('#' + id).is(':checked') && (self.contact == null)) {
+                            if (self.user.majorcontact.length == 0) {
+                                self.contact = {
+                                    UserId: self.user.Id,
+                                    Job: '',
+                                    SchoolId: null,
+                                    MajorId: null
+                                }
+                            } else {
+                                self.contact = self.user.majorcontact[0];
+                            }
+
+                        }
+                        else if (!$('#' + id).is(':checked') && (self.contact != null)) {
+                            self.contact = null;
+                        }
+                    }
+                },
+                deleteUser: function () {
+                    var self = this;
+                    if (confirm('您确定要删除此用户吗？')) {
+                        api.odata.DeleteOne({
+                            SetName: 'user',
+                            Key: self.user.Id,
+                            Success: function () {
+                                window.location.href='manage_userlist.html';
+                            },
+                            Failed: function (data) {
+                                alert("操作失败！{0}".format(data));
+                            },
+                        });
+                    }
+                },
+                save: function () {
+                    var self = this;
+                    // 判断 专家 是否有变动，是增加，删除，还是修改
+                    var eMark = 0;
+                    if (self.user.expert.length > 0) { // pervious is expert
+                        if (self.expert == null) {
+                            // delete
+                            eMark = 1;
+                        } else {
+                            // update
+                            eMark = 2;
+                        }
+                    }
+                    else { // pervious is not expert
+                        if (self.expert != null) {
+                            // add
+                            eMark = 3;
+                        } else {
+                            // no nothing
+                        }
+                    }
+
+                    if (eMark == 1) {
+                        self.deleteExpert();
+                    } else if (eMark == 2) {
+                        self.updateExpert();
+                    } else if (eMark == 3) {
+                        self.addExpert();
+                    }
+
+                    // 判断 联系 是否有变动，是增加，删除，还是修改
+                    var cMark = 0;
+                    if (self.user.majorcontact.length > 0) { // pervious is expert
+                        if (self.contact == null) {
+                            // delete
+                            cMark = 1;
+                        } else {
+                            // update
+                            cMark = 2;
+                        }
+                    }
+                    else { // pervious is not expert
+                        if (self.contact != null) {
+                            // add
+                            cMark = 3;
+                        } else {
+                            // no nothing
+                        }
+                    }
+
+                    if (cMark == 1) {
+                        self.deleteContact();
+                    } else if (cMark == 2) {
+                        self.updateContact();
+                    } else if (cMark == 3) {
+                        self.addContact();
+                    }
+                    self.updateUser();
+                },
+                updateUser: function () {
+                    var self = this;
+                    var type = 0;
+                    $.each($("input[name='usertype']"), function (index, elem) {
+                        type = type | (($(elem).is(':checked')) ? $(elem).val() : 0);
+                    });
+                    var para = {
+                        Name: self.user.Name,
+                        CellPhone: self.user.CellPhone,
+                        Mail: self.user.Mail,
+                        UpdateTime: new Date(getCurrentUTCDate()),
+                        Type: type,
+                        Disabled: self.user.Disabled?"Y":"N"
+                    };
+                    api.odata.updateOne({
+                        SetName: 'user',
+                        Key: self.user.Id,
+                        Data: para,
+                        Success: function () {
+                            alert('保存成功');
+                            window.location.reload();
+                        },
+                        Failed: function (data) {
+                            alert("操作失败！{0}".format(data));
+                        },
+                    });
+                },
+                addExpert: function () {
+                    var self = this;
+                    api.odata.addOne({
+                        SetName: 'expert',
+                        Data: self.expert,
+                        Success: function() {
+                        },
+                        Failed: function (data) {
+                            alert("操作失败！{0}".format(data));
+                        },
+                    });
+                },
+                deleteExpert: function () {
+                    var self = this;
+                    api.odata.DeleteOne({
+                        SetName: 'expert',
+                        Key: self.user.expert[0].Id,
+                        Success: function() {
+                        },
+                        Failed: function (data) {
+                            alert("操作失败！{0}".format(data));
+                        },
+                    });
+                },
+                updateExpert: function () {
+                    var self = this;
+                    api.odata.updateOne({
+                        SetName: 'expert',
+                        Key: self.expert.Id,
+                        Data: self.expert,
+                        Success: function() {
+                        },
+                        Failed: function (data) {
+                            alert("操作失败！{0}".format(data));
+                        },
+                    });
+                },
+                addContact: function () {
+                    var self = this;
+                    api.odata.addOne({
+                        SetName: 'majorcontact',
+                        Data: self.contact,
+                        Success: function() {
+                        },
+                        Failed: function (data) {
+                            alert("操作失败！{0}".format(data));
+                        },
+                    });
+                },
+                deleteContact: function () {
+                    var self = this;
+                    api.odata.DeleteOne({
+                        SetName: 'majorcontact',
+                        Key: self.user.majorcontact[0].Id,
+                        Success: function() {
+                        },
+                        Failed: function (data) {
+                            alert("操作失败！{0}".format(data));
+                        },
+                    });
+                },
+                updateContact: function () {
+                    var self = this;
+                    api.odata.updateOne({
+                        SetName: 'majorcontact',
+                        Key: self.contact.Id,
+                        Data: self.contact,
+                        Success: function() {
+                        },
+                        Failed: function (data) {
+                            alert("操作失败！{0}".format(data));
+                        },
+                    });
+                },
+                resetPassword: function () {
+                    var self = this;
+                    api.user.resetPassword({
+                        UserId: self.user.Id,
+                        Success: function () {
+                            alert('密码重置成功');
+                        },
+                        Failed: function (data) {
+                            alert("操作失败！{0}".format(data));
+                        },
+                    });
+                }
+            }
+        });
+    </script>
+</body>
+</html>

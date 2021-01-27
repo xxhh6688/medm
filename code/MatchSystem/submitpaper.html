@@ -1,0 +1,532 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>提交论文</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <script src="content/js/toastr.js"></script>
+    <script src="content/js/jquery-3.1.1.min.js"></script>
+    <script src="content/js/medm.js?201805042108"></script>
+    <script src="content/js/vue.js"></script>
+    <script src="content/js/spinner.js"></script>
+    <script src="content/js/utility.js?201705231258"></script>
+    <script src="content/js/dialog.js"></script>
+    <script src="content/js/uploadfile.js"></script>
+    <script src="content/js/ckeditor/ckeditor.js"></script>
+    <link rel="stylesheet" type="text/css" href="content/css/medm.css" />
+    <link rel="stylesheet" type="text/css" href="content/css/common.css" />
+    <style>
+        #papercontent input {
+            width: 100%;
+            height: 30px;
+            line-height: 30px;
+            padding-left: 5px;
+            border: 0;
+            box-sizing:border-box;
+        }
+
+        #papercontent select {
+            width: 100%;
+            height: 30px;
+            line-height: 30px;
+            border: 0;
+        }
+
+        .fileitem span[name='percent'] {
+            margin-left: 5px;
+        }
+        .hinttext{
+            display:block;
+            color:#808080;
+            font-style:italic;
+            font-size:12px;
+        }
+    </style>
+    <script>
+        var g = {};
+        $(document).ready(function () {
+            init();
+            matchVM.getMatchDetail();
+            schoolListVM.getSchools();
+        });
+        function init() {
+            initCKEditor('abstract');
+            initCKEditor('designrequirement');
+            $("#submitpaper").click(function () {
+                g.fileType = 1;
+                $("#fileToUpload").attr("accept", ".docx,.doc");
+                $("#fileToUpload").trigger("click");
+            });
+            $("#submitattachment").click(function () {
+                g.fileType = 2;
+                $("#fileToUpload").attr("accept", "*.*");
+                $("#fileToUpload").trigger("click");
+            });
+            $("#savepaper").click(function () {
+                var data = {};
+                data.MatchId = parseInt(getParameterValue2("matchid"));
+                if (isNaN(data.MatchId)) {
+                    alert("未知的大赛类型，请从大赛入口进入提交参赛作品！");
+                    return;
+                }
+                data.QuestionId = parseInt($("#choosedquestion").attr("questionid"));
+                if (isNaN(data.QuestionId)) {
+                    alert("请选择问题后再提交");
+                    return;
+                }
+                if ($("#papercontent .fileitem").length == 0) {
+                    alert("请上传论文后再提交");
+                    return;
+                }
+                data.StudentName = $("#studentname").val();
+                if (data.StudentName.trim() == "") {
+                    alert("请输入学生姓名！");
+                    return;
+                }
+                data.CreateBy = currentUserVM.userInfo.Id;
+                data.Gender = $("#selectgender").val();
+                data.Academy = $("#academy").val();
+                if (data.Academy.trim() == "") {
+                    alert("请输入学生所属学院！");
+                    return;
+                }
+                data.StudentCellPhone = $("#studentcellphone").val();
+                if (data.StudentCellPhone.trim() == "") {
+                    alert("请输入学生手机号码！");
+                    return;
+                }
+                data.StudentMail = $("#studentmail").val();
+                if (data.StudentMail.trim() == "") {
+                    alert("请输入学生邮箱！");
+                    return;
+                }
+                data.Title = $("#title").val();
+                if (data.Title.trim() == '') {
+                    alert('请填写中文题目');
+                    return;
+                }
+                data.EnglishTitle = $("#englishtitle").val();
+                if (data.EnglishTitle.trim() == '') {
+                    alert('请填写英文题目');
+                    return;
+                }
+                data.Abstract = CKEDITOR.instances['abstract'].getData();
+                if (data.Abstract.replace(/<.*?>/g,'').length > 2000) {
+                    alert("请保持扩展版摘要字数2000内！");
+                    return;
+                }
+                data.DesignRequirement = CKEDITOR.instances['designrequirement'].getData();
+                if (data.DesignRequirement.trim() == '') {
+                    alert('请填写设计要求');
+                    return;
+                }
+                
+                data.CreateTime = new Date(getCurrentUTCDate());
+                data.UpdateTime = new Date(getCurrentUTCDate());
+                data.CurrentStatus = 1;
+                data.Type = parseInt($("#papertype").val());
+                data.IdCardNumber = $("#studentIdNumber").val();
+                /*
+                if (((/\d{15}/.test(data.IdCardNumber)) || (/\d{18}/.test(data.IdCardNumber)) || (/\d{17}x/i.test(data.IdCardNumber))) == false) {
+                    alert("身份证号码不合法，请核实。");
+                    return;
+                }
+                */
+
+                data.SchoolId = parseInt($("#selectschool").val());
+                if (isNaN(data.SchoolId)) {
+                    alert("请选择学校后再提交");
+                    return;
+                }
+                data.MajorId = parseInt($("#selectmajor").val());
+                if (isNaN(data.MajorId)) {
+                    alert("请选择专业后再提交");
+                    return;
+                }
+                data.Teachers = JSON.stringify(matchVM.ts);
+                api.odata.addOne({
+                    SetName: "paper",
+                    Data: data,
+                    LoadingId: "papercontent",
+                    Success: function (data) {
+                        var fileCount = $("#papercontent .fileitem").length;
+                        $.each($("#papercontent .fileitem"), function (index, value) {
+                            var fileId = $(value).attr("fileId");
+                            var fileType = $(value).attr("fileType");
+                            var fileData = {};
+                            fileData.PaperId = data.Id;
+                            fileData.FileId = fileId;
+                            fileData.Type = fileType;
+                            api.odata.addOne({
+                                SetName: "paper_file_ref",
+                                Data: fileData,
+                                Success: function () {
+                                    fileCount--;
+                                    if (fileCount == 0) {
+                                        alert("提交成功");
+                                        window.location.reload();
+                                    }
+                                },
+                                Failed: function (data) {
+                                    alert("上传文件操作失败！{0}".format(data));
+                                },
+                            });
+                        });
+                        
+                    },
+                    Failed: function (data) {
+                        alert("操作失败！{0}".format(data));
+                    },
+                });
+            });
+        }
+        function fileSelected() {
+            var file = document.getElementById('fileToUpload').files[0];
+            if (file) {
+                var fileSize = 0;
+                if (file.size > 1024 * 1024)
+                    fileSize = (Math.round(file.size * 100 / (1024 * 1024)) / 100).toString() + 'MB';
+                else
+                    fileSize = (Math.round(file.size * 100 / 1024) / 100).toString() + 'KB';
+                startUpload(file.name);
+            }
+        }
+        function startUpload(name) {
+            var uploader = UPLOADFACTORY.create();
+            uploader.fileName = name;
+            uploader.formData.append("fileToUpload", document.getElementById('fileToUpload').files[0]);
+            uploader.uploadURL = "/api/Files/UploadFiles";
+            uploader.onUploadProgressCallbackFunction = function (token, percent) {
+                var html = "<div class=\"fileitem\" token=\"{2}\"><a name='filelink' href='javascript:void(0)'><span name=\"name\">{0}</span></a><span name=\"percent\">{1}</span><span style='margin-left:7px;margin-top:-3px;cursor:pointer;' name='deletefile' class='ico'>I</span></div>".format(name, percent, token);
+                var containerId = "";
+                if (g.fileType == 1) {
+                    containerId = "paperlist";
+                }
+                else if (g.fileType == 2) {
+                    containerId = "attachmentlist";
+                }
+
+                if ($("#" + containerId).find("div[token={0}]".format(token)).length == 0) {
+                    $("#" + containerId).append(html);
+                    $("#" + containerId).find(".fileitem:last-child").find("span[name='deletefile']").click(function () {
+                        if (confirm("确认删除此文件吗？")) {
+                            $(this).parents(".fileitem").remove();
+                        }
+                    });
+                    $("#" + containerId).find("div[token={0}]".format(token)).attr("fileType", g.fileType);
+                }
+
+                $("#" + containerId).find("div[token={0}]".format(token)).find("span[name='percent']").text("【上传进度:" + percent + "%】");
+            };
+            uploader.onUploadCompleteCallbackFunction = function (fileObj, token) {
+                $("#papercontent").find("div[token={0}]".format(token)).find("span[name='percent']").text("【上传完毕】");
+                $("#papercontent").find("div[token={0}]".format(token)).attr("fileId", fileObj[0].Id);
+                $("#papercontent").find("div[token={0}]".format(token)).attr("realToken", fileObj[0].Token);
+                $("#papercontent").find("div[token={0}]".format(token)).find("a[name='filelink']").attr("href", "/api/Files/DownloadFile?fileToken={0}".format(fileObj[0].Token));
+            };
+            uploader.uploadFile();
+        }
+
+    </script>
+</head>
+<body>
+    <div id="header">
+        <script>
+            loadPage("header", "header");
+        </script>
+    </div>
+    <div id="body" class="page loadpane">
+        <div id="pagetitle"><span>首页</span><span>大赛详情</span><span>提交论文</span></div>
+        <div id="papercontent">
+            <table class="htable">
+                <tr>
+                    <td><span class="ico required">&#57888;</span>中文标题</td>
+                    <td><input type="text" id="title" /></td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>英文标题</td>
+                    <td><input type="text" id="englishtitle" /></td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>作品类型</td>
+                    <td>
+                        <select id="papertype">
+                            <option value="1">论文</option>
+                            <option value="2">设计</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>选择题目</td>
+                    <td>
+                        <div style="position:relative;">
+                            <span id="choosedquestion" onclick="$('#choosequestiondialog').toggle();"><span>【点击选择题目】</span></span>
+                            <div id="choosequestiondialog" style="display:none;position:absolute;top:25px;left:0;z-index:1001;background-color:#ffffff;padding:22px 3px 3px 3px;border-left:1px solid #cccccc;border-right:1px solid #cccccc;border-bottom:1px solid #cccccc;min-width:300px;">
+                                <form id="searchquestionform" style="margin:0;padding:0;position:relative;" onsubmit="matchVM.filterQuestion(this);return false;">
+                                    <input autocomplete="off" name="search" type="text" placeholder="搜索序号或问题题目,按回车键查询" style="width:99%;" />
+                                    <button style="position:absolute;top:5px;right:10px;background-color:#ffffff;border:0;"><span class="ico" style="color:#cccccc;">S</span></button>
+                                </form>
+                                <div style="max-height:300px;overflow:auto;">
+                                    <ul id="selectquestion" style="list-style:none;margin:0;padding:0;cursor:pointer;">
+                                        <li :val="item.question.Id" v-for="item in filteredQuestion" onclick="matchVM.chooseQuestion(this)">【{{item.question.SerialNumber}}】 {{item.question.Name}}</li>
+                                    </ul>
+                                    <span style="position:absolute;top:0;right:0;cursor:pointer;" class="ico" onclick="$('#choosequestiondialog').toggle()">I</span>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>上传论文</td>
+                    <td>
+                        <div id="paperlist"></div>
+                        <span class="hinttext">*要求.doc或.docx格式</span>
+                        <button id="submitpaper"><span>选择文件</span></button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>上传附件</td>
+                    <td>
+                        <div id="attachmentlist"></div>
+                        <span class="hinttext">*附件文档要求.doc或.docx格式，图片要求.jpg格式，视频要求.mp4格式，二维图要求.dwg格式，三维图要求.stp格式</span>
+                        <button id="submitattachment"><span>选择文件</span></button>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>扩展版摘要<br />不超过2000字</td>
+                    <td><textarea id="abstract"></textarea></td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>设计要求</td>
+                    <td><textarea id="designrequirement"></textarea></td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>学生姓名</td>
+                    <td>
+                        <input type="text" id="studentname" />
+                    </td>
+                </tr>
+                <tr>
+                    <td>学生性别</td>
+                    <td>
+                        <select id="selectgender">
+                            <option value='M'>男</option>
+                            <option value='F'>女</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>身份证号</td>
+                    <td><input type="text" id="studentIdNumber" /></td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>学校</td>
+                    <td>
+                        <select id="selectschool">
+                            <option value="NN">请选择</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>专业</td>
+                    <td>
+                        <select id="selectmajor">
+                            <option value="NN">请选择</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>学院</td>
+                    <td><input type="text" id="academy" /></td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>手机</td>
+                    <td><input type="text" id="studentcellphone" /></td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>邮箱</td>
+                    <td><input type="text" id="studentmail" /></td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="text-align:left;padding-left:18px;"><span>高校指导老师信息</span></td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>姓名</td>
+                    <td><input type="text" v-model="ts[0].Name" /></td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>单位</td>
+                    <td><input type="text" v-model="ts[0].Company" /></td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>职称</td>
+                    <td><input type="text" v-model="ts[0].Title" /></td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>手机</td>
+                    <td><input type="text" v-model="ts[0].Mobile" /></td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>邮箱</td>
+                    <td><input type="text" v-model="ts[0].Email" /></td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="text-align:left;padding-left:18px;"><span>企业指导老师信息</span></td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>姓名</td>
+                    <td><input type="text" v-model="ts[1].Name" /></td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>单位</td>
+                    <td><input type="text" v-model="ts[1].Company" /></td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>职称</td>
+                    <td><input type="text" v-model="ts[1].Title" /></td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>手机</td>
+                    <td><input type="text" v-model="ts[1].Mobile" /></td>
+                </tr>
+                <tr>
+                    <td><span class="ico required">&#57888;</span>邮箱</td>
+                    <td><input type="text" v-model="ts[1].Email" /></td>
+                </tr>
+            </table>
+            <div style="display:none;">
+                <form id="uploadform" enctype="multipart/form-data" method="post" action="">
+                    <input type="file" class="" name="fileToUpload" id="fileToUpload" onchange="fileSelected();" />
+                </form>
+            </div>
+            <div class="savecancel"><button id="savepaper"><span>提交</span></button><button id="cancel"><span>取消</span></button></div>
+        </div>
+    </div>
+    <div id="footer"></div>
+    <script>
+        loadPage("footer", "footer");
+        var matchVM = new Vue({
+            el: "#papercontent",
+            data: {
+                match: {},
+                filteredQuestion: null,
+                ts: [
+                    {
+                        Name: "",
+                        Company: "",
+                        Title: "",
+                        Mobile: "",
+                        Email: ""
+                    }, {
+                        Name: "",
+                        Company: "",
+                        Title: "",
+                        Mobile: "",
+                        Email: ""
+                    }],
+            },
+            methods: {
+                getMatchDetail: function () {
+                    var self = this;
+                    api.odata.getOne({
+                        SetName: "match",
+                        Key: getParameterValue2("matchid"),
+                        Uri: "?$expand=match_question_ref($expand=question($select=Id,Name,SerialNumber))",
+                        Success: function (data) {
+                            self.match = data;
+                            var date = new Date();
+                            if (date.toISOString() < data.RegisterStartTime) {
+                                alert("还未到大赛论文提交时间！");
+                                window.location.href = '/';
+                            }
+                            var endDate = new Date(data.RegisterEndTime);
+                            endDate.setDate(endDate.getDate() + 1);
+                            // todo 临时打开到中午12点
+                            if (date.toISOString() > endDate.toISOString() && (date.toISOString() > new Date("2019/05/13 12:00:00").toISOString())) {
+                                alert("大赛论文提交时间已经结束！");
+                                window.location.href = '/';
+                                return;
+                            }
+                            self.filteredQuestion = data.match_question_ref;
+                        },
+                        Failed: function (data) {
+                            alert("操作失败！{0}".format(data));
+                        },
+                    });
+                },
+                filterQuestion: function (obj) {
+                    var self = this;
+                    var searchText = $(obj).find("input[name='search']").val();
+                    self.filteredQuestion = [];
+                    $.each(self.match.match_question_ref, function (index, value) {
+                        if ((value.question.Name + value.question.SerialNumber).indexOf(searchText) != -1) {
+                            self.filteredQuestion.push(value);
+                        }
+                    });
+                },
+                chooseQuestion: function (obj) {
+                    var self = this;
+                    var questionId = $(obj).attr("val");
+                    var questionName = $(obj).text();
+                    $("#choosedquestion").attr("questionid", questionId);
+                    $("#choosedquestion span").text(questionName + " 【点击重新选择】");
+                    $("#choosequestiondialog").hide();
+                    $("input[name='search']").val("");
+                    self.filterQuestion($("#searchquestionform"));
+                }
+            }
+        });
+        var schoolListVM = new Vue({
+            el: "#footer",
+            data: {
+                schoolList: null,
+                majorList: null,
+            },
+            methods: {
+                getSchools: function () {
+                    var self = this;
+                    api.odata.getList({
+                        SetName: "school",
+                        Uri: "?$orderby=SpellWord",
+                        Success: function (data) {
+                            self.schoolList = data.value;
+                            Vue.nextTick(function () {
+                                $.each(self.schoolList, function (index, value) {
+                                    var html =
+                                        "<option value='{1}'>{0}</option>";
+                                    html = html.format(value.Name, value.Id);
+                                    $("#selectschool").append(html);
+                                });
+                                $("#selectschool").change(function () {
+                                    var i = $(this).val();
+                                    self.getMajors(i);
+                                });
+                            });
+                        }
+                    });
+                },
+                getMajors: function (schoolId) {
+                    var self = this;
+                    api.odata.getList({
+                        SetName: "major",
+                        Uri: "?$filter=SchoolId eq {0}".format(schoolId),
+                        Success: function (data) {
+                            self.majorList = data.value;
+                            Vue.nextTick(function () {
+                                $("#selectmajor").empty();
+                                $("#selectmajor").append("<option value='NN'>请选择</option>");
+                                $.each(self.majorList, function (index, value) {
+                                    var html =
+                                        "<option value='{1}'>{0}</option>";
+                                    html = html.format(value.Name, value.Id);
+                                    $("#selectmajor").append(html);
+                                });
+                            });
+                        }
+                    });
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>管理 题目列表</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <script src="content/js/toastr.js"></script>
+    <script src="content/js/jquery-3.1.1.min.js"></script>
+    <script src="content/js/medm.js?201805042108"></script>
+    <script src="content/js/utility.js?201705231258"></script>
+    <script src="content/js/ckeditor/ckeditor.js"></script>
+    <script src="content/js/spinner.js"></script>
+    <script src="content/js/vue.js"></script>
+    <link rel="stylesheet" type="text/css" href="content/css/medm.css" />
+    <link rel="stylesheet" type="text/css" href="content/css/common.css" />
+    <style>
+        .page{
+            margin:0;
+            width:100%;
+        }
+    </style>
+    <script>
+        $(document).ready(function () {
+            qlistVM.init();
+        });
+    </script>
+</head>
+<body>
+    <div id="header">
+        <script>
+            loadPage("header", "header");
+        </script>
+    </div>
+    <div id="body" class="page">
+        <div id="managenav"></div>
+        <script>
+        loadPage("managenav", "managenav");
+        </script>
+        <div id="managecontent">
+            <div id="pagetitle"><span>首页</span><span>管理</span><span>题目列表</span></div>
+            <div id="managecontentdetail">
+                <table id="questionlist" class="vtable">
+                    <tr>
+                        <td>ID</td>
+                        <td>标题(点击编辑)</td>
+                        <td style="width:100px;">类型</td>
+                        <td style="width:100px;">序号</td>
+                    </tr>
+                    <tr>
+                        <td colspan="4"><a href="manage_newquestion.html"><span class="spanbutton">添加新题目</span></a></td>
+                    </tr>
+                    <tr v-for="item in qlist">
+                        <td style="width:60px;">{{item.Id}}</td>
+                        <td><a v-bind:href="'manage_editquestion.html?id=' + item.Id">{{item.Name}}</a></td>
+                        <td style="width:100px;">{{translate(item.Type)}}</td>
+                        <td style="width:100px;">{{item.SerialNumber}}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script>
+        var qlistVM = new Vue({
+            el: "#managecontentdetail",
+            data: {
+                qlist:[]
+            },
+            methods: {
+                init: function () {
+                    var self = this;
+                    api.odata.getList({
+                        SetName: "question?$select=Id,Name,SerialNumber,Type",
+                        Uri: "",
+                        Success: function (data) {
+                            self.qlist = data.value;
+                        },
+                        LoadingId: "managecontentdetail"
+                    });
+                },
+                translate: function (type) {
+                    if (type == 1) {
+                        return "开放题目";
+                    }
+                    else if (type == 2) {
+                        return "定向题目";
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
